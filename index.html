@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Every Great Journey</title>
+  <link rel="stylesheet" href="css/styles.css?v=3">
+</head>
+<body>
+
+  <!-- ============ INTRO CARD (landing state) ============ -->
+  <section id="intro" class="intro-overlay">
+    <div class="intro-card" id="introCard">
+      <div class="intro-card-decor" aria-hidden="true">
+        <span class="decor star">✦</span>
+        <span class="decor heart">♥</span>
+        <span class="decor star2">✦</span>
+        <span class="decor cloud">☁</span>
+      </div>
+      <h1>Every great journey<br>has many little steps.</h1>
+      <p class="intro-sub">A little something from your friends at Pixel Dreams</p>
+      <button class="btn btn-primary" id="celebrateBtn">Let&rsquo;s celebrate</button>
+    </div>
+  </section>
+
+  <!-- ============ GAME BOARD (the whole page) ============ -->
+  <main id="board" class="board" aria-label="Game board">
+    <!-- 3-part vertical-scroll board using Carlos's "game board empty" export.
+         The SVG path is invisible — it traces the painted track and only
+         drives the pawn's movement. viewBox matches board-empty.jpg. -->
+    <svg id="boardSvg" class="board-svg" viewBox="0 0 2000 3362" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      <path id="trackPath" class="track"
+        d="M 1400 320 C 1395 470 1388 630 1388 780 C 1388 960 1390 1140 1405 1300 C 1418 1440 1360 1550 1280 1620 C 1180 1670 1060 1700 950 1720 C 800 1745 620 1740 500 1790 C 420 1830 415 1920 420 2000 C 425 2090 420 2160 460 2230 C 510 2280 600 2250 700 2235 C 850 2215 1050 2210 1200 2230 C 1330 2250 1420 2320 1450 2450 C 1470 2550 1465 2680 1430 2790"
+        fill="none"/>
+    </svg>
+
+    <!-- board title -->
+    <header class="board-header">
+      <h2 class="board-title">The Fruits Family Journey</h2>
+      <p class="board-sub">Revisit the memories that led here.</p>
+    </header>
+
+    <!-- milestone slots (positioned along track; aspect matches each polaroid) -->
+    <div class="slot slot-landscape" id="slot-0" data-index="0">
+      <div class="slot-frame"><span class="slot-num">1</span></div>
+      <p class="slot-label">First step of a beautiful journey together.</p>
+    </div>
+    <div class="slot slot-portrait" id="slot-1" data-index="1">
+      <div class="slot-frame"><span class="slot-num">2</span></div>
+      <p class="slot-label">A promise to build a life together.</p>
+    </div>
+    <div class="slot slot-landscape golden" id="slot-2" data-index="2">
+      <div class="slot-frame"><span class="slot-num">3</span></div>
+      <p class="slot-label">Your greatest chapter yet.</p>
+    </div>
+
+    <!-- pawn: Johnny alone at the start; his wife joins after the first card -->
+    <div class="pawn-wrap" id="pawnWrap">
+      <img id="pawnJohnny" class="pawn" src="assets/pawn-jonny.png" alt="">
+      <img id="pawnCouple" class="pawn pawn-couple" src="assets/pawn-family.png" alt="">
+    </div>
+
+    <!-- the deck -->
+    <div class="deck-area" id="deckArea">
+      <div class="speech-bubble" id="deckBubble">Click the deck to shuffle!</div>
+      <div class="deck" id="deck" role="button" tabindex="0" aria-label="Deck of memory cards">
+        <div class="deck-card dc-3"></div>
+        <div class="deck-card dc-2"></div>
+        <div class="deck-card dc-1"></div>
+        <div class="deck-card dc-top" id="deckTop">
+          <div class="card-back-design">
+            <span class="card-back-emblem">✦</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- easter eggs (subtle, placeholder positions) -->
+    <div class="egg egg-pd" title="" aria-hidden="true"><span></span><span></span><span></span></div>
+    <svg class="egg egg-cloud" viewBox="0 0 64 40" aria-hidden="true"><path d="M50 32H16a10 10 0 1 1 2.5-19.7A14 14 0 0 1 45 16a9 9 0 0 1 5 16z"/></svg>
+    <div class="egg egg-ball" aria-hidden="true"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="18"/><path d="M2 20h36M20 2v36M7 7c8 8 18 18 26 26M33 7C25 15 15 25 7 33" fill="none"/></svg></div>
+  </main>
+
+  <!-- ============ CARD REVEAL OVERLAY ============ -->
+  <section id="reveal" class="reveal-overlay" aria-live="polite">
+    <div class="reveal-card" id="revealCard">
+      <div class="reveal-inner" id="revealInner">
+        <div class="reveal-face reveal-back">
+          <div class="card-back-design big"><span class="card-back-emblem">✦</span></div>
+        </div>
+        <div class="reveal-face reveal-front">
+          <img id="revealImg" src="" alt="">
+          <p class="reveal-caption" id="revealCaption"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FINAL SCENE: carriage + gift + envelope ============ -->
+  <section id="scene" class="scene-overlay">
+    <div class="scene-stage">
+      <img class="scene-art" src="assets/baby-carriage.png" alt="A baby carriage beside a gift box and envelope">
+      <div class="scene-copy">
+        <div class="speech-bubble scene-bubble" id="sceneBubble">Claim your gift!</div>
+      </div>
+      <!-- clickable stamp hotspot over the envelope in the illustration -->
+      <button class="stamp-hotspot" id="stampHotspot" aria-label="Click the postage stamp to claim your gift">
+        <div class="stamp" id="stamp">
+          <div class="stamp-inner">
+            <span class="stamp-icon">👶</span>
+            <span class="stamp-value">2026</span>
+          </div>
+        </div>
+      </button>
+    </div>
+  </section>
+
+  <!-- ============ GIFT SELECTION (3 flip cards, separate from the form) ============ -->
+  <section id="giftSelect" class="giftselect-overlay">
+    <div class="giftselect-stage">
+      <h3 class="giftselect-title">Pick the gift you&rsquo;d love to receive</h3>
+      <p class="giftselect-sub">Flip each card to peek inside, then choose one.</p>
+      <div class="gift-flip-row">
+
+        <div class="gift-flip" data-gift="Once Upon a Bedtime" tabindex="0">
+          <div class="gift-flip-inner">
+            <div class="gf-face gf-front">
+              <span class="gf-emoji">📚</span>
+              <h4>Once Upon a Bedtime</h4>
+              <p>The beginning of a lifetime of stories.</p>
+              <span class="gf-hint">Flip me</span>
+            </div>
+            <div class="gf-face gf-back">
+              <img class="gf-art" src="assets/gift-books.jpg" alt="A set of children's books with a bookmark that reads: a reader lives a thousand lives">
+              <button class="btn btn-primary gf-select" type="button">Choose this gift</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="gift-flip" data-gift="The Days You'll Treasure" tabindex="0">
+          <div class="gift-flip-inner">
+            <div class="gf-face gf-front">
+              <span class="gf-emoji">📸</span>
+              <h4>The Days You&rsquo;ll Treasure</h4>
+              <p>Preserve the little moments that become the big ones.</p>
+              <span class="gf-hint">Flip me</span>
+            </div>
+            <div class="gf-face gf-back">
+              <img class="gf-art" src="assets/gift-keepsake.jpg" alt="A keepsake memory box with drawers, baby shoes, and blankets">
+              <button class="btn btn-primary gf-select" type="button">Choose this gift</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="gift-flip" data-gift="A Moment Together" tabindex="0">
+          <div class="gift-flip-inner">
+            <div class="gf-face gf-front">
+              <span class="gf-emoji">🌿</span>
+              <h4>A Moment Together</h4>
+              <p>Rest and reconnection during life&rsquo;s biggest transition.</p>
+              <span class="gf-hint">Flip me</span>
+            </div>
+            <div class="gf-face gf-back">
+              <img class="gf-art" src="assets/gift-spa.jpg" alt="A couple enjoying a relaxing spa day together">
+              <button class="btn btn-primary gf-select" type="button">Choose this gift</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ADDRESS FORM (inside zoomed stamp, gift already chosen) ============ -->
+  <section id="form" class="form-overlay">
+    <div class="form-stamp-frame">
+      <div class="form-scroll">
+        <h3 class="form-title">Where should it fly to?</h3>
+        <p class="form-gift-line">Your gift: <strong id="chosenGiftLabel"></strong>
+          <button type="button" class="link-btn" id="changeGiftBtn">change my mind</button></p>
+
+        <form id="claimForm" novalidate>
+          <div class="field">
+            <label for="fName">Name</label>
+            <input id="fName" name="name" type="text" autocomplete="name" required>
+          </div>
+          <div class="field">
+            <label for="fPhone">Phone number</label>
+            <input id="fPhone" name="phone" type="tel" autocomplete="tel" required>
+          </div>
+          <div class="field">
+            <label for="fAddress">Delivery address</label>
+            <textarea id="fAddress" name="address" rows="3" autocomplete="street-address" required></textarea>
+          </div>
+          <p class="form-error" id="formError" role="alert"></p>
+          <button type="submit" class="btn btn-primary btn-wide">Send it my way</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ THANK YOU ============ -->
+  <section id="thanks" class="thanks-overlay">
+    <div class="thanks-card">
+      <h3>Thank you &mdash; your gift is on its way!</h3>
+      <p>Here&rsquo;s to many more wonderful memories and milestones ahead.</p>
+      <button class="btn btn-secondary" id="exploreBtn">Wander the board</button>
+    </div>
+  </section>
+
+  <script src="js/vendor/gsap.min.js"></script>
+  <script src="js/main.js?v=4"></script>
+</body>
+</html>

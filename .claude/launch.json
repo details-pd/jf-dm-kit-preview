@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "jonny-fruits-dm-kit",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8788", "--directory", "/Users/details/apps-script-backups/jonny-fruits-dm-kit"],
+      "port": 8788
+    }
+  ]
+}
