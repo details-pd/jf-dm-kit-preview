@@ -384,10 +384,13 @@ body {
   inset: 0;
   z-index: 84;
   display: none;
-  place-items: center;
   background: var(--yellow);
   padding: 3vh 3vw;
+  overflow-y: auto; /* cards stack taller than the screen on phones */
 }
+/* margin:auto centers when content fits, and degrades to normal
+   scroll flow when it doesn't (place-items:center would clip the top) */
+.giftselect-stage { margin: auto; }
 .giftselect-title {
   color: var(--blue-dark);
   font-size: clamp(1.3rem, 3.4vw, 2.6rem);
@@ -580,10 +583,10 @@ body {
 
 /* ============ small screens (basic MVP responsiveness) ============ */
 @media (max-width: 700px) {
-  .deck-area { right: 4%; bottom: 3%; width: 24%; }
+  /* bottom-LEFT on phones — the whole board fits one screen there,
+     and bottom-right would cover the third polaroid */
+  .deck-area { left: 3%; right: auto; bottom: 2%; width: 19%; }
   .pawn-wrap { width: 16%; }
-  .slot { width: 38%; }
-  .slot-portrait { width: 30%; }
   .scene-copy { top: 2%; }
-  .gift-flip { width: min(80vw, 300px); }
+  .gift-flip { width: min(78vw, 340px); }
 }
