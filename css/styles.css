@@ -586,7 +586,7 @@ body {
   /* bottom-LEFT on phones — the whole board fits one screen there,
      and bottom-right would cover the third polaroid */
   .deck-area { left: 3%; right: auto; bottom: 2%; width: 19%; }
-  .pawn-wrap { width: 16%; }
+  .pawn-wrap { width: 15%; min-width: 44px; }
   .scene-copy { top: 2%; }
   .gift-flip { width: min(78vw, 340px); }
 }

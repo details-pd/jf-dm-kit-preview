@@ -69,10 +69,12 @@ function positionPawn(t) {
   const boardRect = board.getBoundingClientRect();
   const pos = pathPointAt(t);
   const w = pw.offsetWidth, h = pw.offsetHeight;
-  // anchor the pawn's feet (bottom-center) on the track
+  // anchor the pawn's feet (bottom-center) on the track, but never let his
+  // head poke above the board edge (happens on phones, where the pawn's
+  // minimum pixel size is large relative to the scaled-down board)
   gsap.set(pw, {
     left: pos.x - boardRect.left - w / 2 + "px",
-    top: pos.y - boardRect.top - h * 0.92 + "px",
+    top: Math.max(4, pos.y - boardRect.top - h * 0.92) + "px",
   });
 }
 
