@@ -1,0 +1,279 @@
+/* =========================================================
+   Jonny Fruits DM Kit v2 — side-scrolling parallax drive
+   (Aug 6 pivot: Monument-Valley-flavored side view, no board
+   text, popups on blurred backdrops. Placeholder art — every
+   shape here is a stand-in for Kharisel's Figma exports.)
+   ========================================================= */
+
+:root {
+  --sky-top: #8fd3e8;
+  --sky-bottom: #cfeef7;
+  --ground: #8fbf6e;
+  --road: #5a5a66;
+  --road-line: #f4e9c9;
+  --ink: #23272f;
+  --cream: #fdf6e6;
+  --red: #d23c2a;
+  --blue-dark: #1a2f7a;
+  --green-deep: #0f6b47;
+  --shadow: 0 14px 40px rgba(20, 24, 32, 0.25);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { height: 100%; }
+body {
+  min-height: 100%;
+  font-family: "Avenir Next", "Nunito", "Segoe UI", system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--sky-bottom);
+}
+
+.btn {
+  font: inherit;
+  font-weight: 700;
+  border: none;
+  border-radius: 999px;
+  padding: 0.8em 1.8em;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(20, 24, 32, 0.25);
+  transition: transform 120ms ease;
+}
+.btn:hover { transform: translateY(-2px); }
+.btn-primary { background: var(--red); color: var(--cream); }
+.btn-secondary { background: var(--green-deep); color: var(--cream); }
+.btn-wide { width: 100%; }
+
+/* ============ stage & parallax layers ============ */
+.stage {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: linear-gradient(var(--sky-top), var(--sky-bottom) 62%, var(--ground) 62.5%);
+  transition: filter 400ms ease;
+}
+.stage.blurred { filter: blur(14px) saturate(0.9); }
+
+.layer { position: absolute; inset: 0; will-change: transform; }
+
+/* --- sky --- */
+.sun {
+  position: absolute; top: 8vh; left: 70vw;
+  width: 10vmin; height: 10vmin; border-radius: 50%;
+  background: #ffe9a8; box-shadow: 0 0 60px 20px rgba(255, 233, 168, 0.65);
+}
+.cloud {
+  position: absolute; background: #fff; border-radius: 100px;
+  height: 5vmin; width: 16vmin; opacity: 0.9;
+}
+.cloud::after {
+  content: ""; position: absolute; background: #fff; border-radius: 50%;
+  width: 7vmin; height: 7vmin; top: -3vmin; left: 4vmin;
+}
+.c1 { top: 12vh; left: 15vw; }
+.c2 { top: 6vh;  left: 120vw; transform: scale(1.3); }
+.c3 { top: 18vh; left: 220vw; transform: scale(0.8); }
+.c4 { top: 9vh;  left: 320vw; transform: scale(1.1); }
+
+/* --- hills --- */
+.hill {
+  position: absolute; bottom: 30vh; border-radius: 50% 50% 0 0;
+  background: #a5d18a; width: 70vw; height: 26vh;
+}
+.h1 { left: -10vw; }
+.h2 { left: 80vw;  background: #97c77c; height: 32vh; }
+.h3 { left: 190vw; }
+.h4 { left: 330vw; background: #97c77c; height: 30vh; }
+
+/* --- trees (Carlos scenery slots) --- */
+.tree { position: absolute; bottom: 32vh; left: var(--x); width: 6vmin; height: 14vmin; }
+.tree::before { /* canopy */
+  content: ""; position: absolute; inset: 0 0 30% 0;
+  background: #3e8f5a; border-radius: 50% 50% 45% 45%;
+}
+.tree::after { /* trunk */
+  content: ""; position: absolute; left: 42%; bottom: 0;
+  width: 16%; height: 38%; background: #7a5230; border-radius: 4px;
+}
+
+/* --- world: road, milestones, car --- */
+.road {
+  position: absolute; bottom: 0; left: -20vw; width: 640vw; height: 30vh;
+  background: var(--road);
+  border-top: 1.2vh solid #4c4c57;
+}
+.road::after {
+  content: ""; position: absolute; top: 46%; left: 0; right: 0; height: 1.4vh;
+  background: repeating-linear-gradient(90deg,
+    var(--road-line) 0 6vw, transparent 6vw 12vw);
+}
+
+.milestone {
+  position: absolute;
+  bottom: 28vh;
+  left: var(--x);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transform: translateX(-50%);
+}
+/* wordless "you can click this" cue */
+.tap-ring {
+  position: absolute; left: 50%; top: -4vmin; width: 5vmin; height: 5vmin;
+  margin-left: -2.5vmin; border: 0.6vmin solid rgba(255, 255, 255, 0.95);
+  border-radius: 50%; box-shadow: 0 0 0 0.4vmin rgba(35, 39, 47, 0.25);
+  animation: pulse 1.6s ease-out infinite;
+  opacity: 0; /* revealed when the car arrives */
+}
+.milestone.armed .tap-ring { opacity: 1; }
+@keyframes pulse {
+  0% { transform: scale(0.8); opacity: 0.9; }
+  70% { transform: scale(1.25); opacity: 0.35; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+
+/* placeholder church (swaps for the 3D render) */
+.placeholder-church { position: relative; width: 22vmin; height: 26vmin; }
+.placeholder-church .nave {
+  position: absolute; bottom: 0; left: 0; width: 100%; height: 55%;
+  background: #e8e0d0; border: 0.5vmin solid #b9ad94; border-radius: 1vmin 1vmin 0 0;
+}
+.placeholder-church .steeple {
+  position: absolute; bottom: 52%; left: 32%; width: 36%; height: 48%;
+  background: #efe8da; border: 0.5vmin solid #b9ad94;
+  clip-path: polygon(50% 0, 100% 38%, 100% 100%, 0 100%, 0 38%);
+}
+
+/* placeholder bassinet ("a big one") */
+.placeholder-bassinet { position: relative; width: 26vmin; height: 22vmin; }
+.placeholder-bassinet .hood {
+  position: absolute; top: 0; left: 0; width: 55%; height: 60%;
+  background: #2743a6; border-radius: 100% 0 0 0 / 100% 0 0 0;
+}
+.placeholder-bassinet .basket {
+  position: absolute; top: 42%; left: 0; width: 100%; height: 34%;
+  background: #33509e; border-radius: 0 0 3vmin 3vmin;
+}
+.placeholder-bassinet .legs {
+  position: absolute; bottom: 0; left: 15%; width: 70%; height: 24%;
+  background:
+    linear-gradient(75deg, transparent 46%, #7a5230 47% 53%, transparent 54%),
+    linear-gradient(-75deg, transparent 46%, #7a5230 47% 53%, transparent 54%);
+}
+
+/* --- the car (fixed screen spot; world slides past) --- */
+.car {
+  position: absolute;
+  left: 30vw;
+  bottom: 24.5vh;
+  width: clamp(160px, 18vw, 300px);
+  z-index: 5;
+}
+.car-svg { width: 100%; height: auto; }
+
+/* --- foreground --- */
+.bush {
+  position: absolute; bottom: -2vh; left: var(--x);
+  width: 22vmin; height: 9vmin; border-radius: 100px 100px 0 0;
+  background: #2f7a4b; opacity: 0.95;
+}
+
+/* --- scroll cue (wordless) --- */
+.scroll-cue {
+  position: absolute; right: 4vw; bottom: 6vh;
+  display: flex; gap: 0.4vmin;
+  opacity: 0.9; transition: opacity 400ms ease;
+}
+.scroll-cue.hidden { opacity: 0; }
+.chevron {
+  width: 2.4vmin; height: 2.4vmin;
+  border-top: 0.6vmin solid var(--cream);
+  border-right: 0.6vmin solid var(--cream);
+  transform: rotate(45deg);
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35));
+  animation: nudge 1.4s ease-in-out infinite;
+}
+.chevron:nth-child(2) { animation-delay: 0.15s; }
+@keyframes nudge {
+  0%, 100% { transform: rotate(45deg) translate(0, 0); }
+  50% { transform: rotate(45deg) translate(0.6vmin, -0.6vmin); }
+}
+
+/* ============ scroll driver ============ */
+#scrollDriver { width: 1px; }
+
+/* ============ popups (blurred backdrop per the sync) ============ */
+.popup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: none;
+  place-items: center;
+  background: rgba(30, 34, 44, 0.35);
+  padding: 4vh 4vw;
+}
+.popup-overlay.open { display: grid; }
+
+.popup-card {
+  position: relative;
+  background: var(--cream);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+  padding: clamp(1.6rem, 4vw, 3rem);
+  max-width: min(640px, 92vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  text-align: center;
+}
+.popup-close {
+  position: absolute; top: 10px; right: 16px;
+  background: none; border: none; font-size: 2rem; line-height: 1;
+  cursor: pointer; color: var(--ink); opacity: 0.6;
+}
+.popup-close:hover { opacity: 1; }
+
+.intro-card .intro-hi { font-weight: 800; color: var(--blue-dark); font-size: 1.3em; margin-bottom: 0.4em; }
+.intro-card p { margin-bottom: 0.6em; }
+.intro-card .btn { margin-top: 1em; }
+
+.art-card img { max-width: min(520px, 80vw); max-height: 70vh; display: block; }
+
+/* gift flip cards (compact popup variant of v1's) */
+.gift-card-wrap { max-width: min(1100px, 94vw); }
+.gift-flip-row { display: flex; gap: 1.2rem; justify-content: center; flex-wrap: wrap; }
+.gift-flip { width: clamp(170px, 24vmin, 260px); aspect-ratio: 3 / 4.1; perspective: 1000px; cursor: pointer; }
+.gift-flip-inner {
+  position: relative; width: 100%; height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 500ms cubic-bezier(0.4, 0.1, 0.2, 1);
+}
+.gift-flip.flipped .gift-flip-inner { transform: rotateY(180deg); }
+.gf-face {
+  position: absolute; inset: 0; backface-visibility: hidden;
+  border-radius: 14px; background: #fff; box-shadow: 0 8px 22px rgba(20,24,32,0.18);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 0.5em; padding: 1em; text-align: center;
+}
+.gf-face h4 { color: var(--blue-dark); }
+.gf-face p { font-size: 0.85rem; font-weight: 600; opacity: 0.8; }
+.gf-back { transform: rotateY(180deg); padding: 0; overflow: hidden; }
+.gf-back img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.gf-select { position: relative; z-index: 1; margin-top: auto; margin-bottom: 6%; }
+.gift-flip.disabled { pointer-events: none; filter: grayscale(0.7); opacity: 0.45; }
+.gift-flip.chosen .gf-face { box-shadow: 0 0 22px 4px rgba(255, 215, 106, 0.85); }
+
+/* form */
+.form-card { text-align: left; width: min(520px, 92vw); }
+.form-card h3 { color: var(--blue-dark); text-align: center; margin-bottom: 0.4em; }
+.gift-line { text-align: center; font-weight: 600; color: var(--green-deep); margin-bottom: 1.2em; }
+.gift-line strong { color: var(--blue-dark); }
+.link-btn {
+  background: none; border: none; font: inherit; font-size: 0.85em; font-weight: 700;
+  color: var(--red); text-decoration: underline; cursor: pointer; margin-left: 0.4em;
+}
+.form-card label { display: block; font-weight: 700; margin: 0.9em 0 0.25em; }
+.form-card input, .form-card textarea {
+  width: 100%; font: inherit; border: 2px solid var(--ink); border-radius: 10px;
+  padding: 0.55em 0.8em; background: #fff;
+}
+.form-error { color: var(--red); font-weight: 700; min-height: 1.3em; margin: 0.6em 0; }

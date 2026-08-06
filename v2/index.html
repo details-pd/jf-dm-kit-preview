@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>A Little Something</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ============ FIXED STAGE: the side-scrolling world ============ -->
+  <!-- Page scroll (vertical) drives the world horizontally. Every .layer
+       moves at its own speed for parallax depth. Placeholder art throughout —
+       each img/div slot swaps for Kharisel's Figma exports. -->
+  <div id="stage" class="stage" aria-label="A drive through Jonny's journey">
+
+    <div class="layer" data-speed="0.15" id="layerSky">
+      <div class="sun"></div>
+      <div class="cloud c1"></div>
+      <div class="cloud c2"></div>
+      <div class="cloud c3"></div>
+      <div class="cloud c4"></div>
+    </div>
+
+    <div class="layer" data-speed="0.45" id="layerHills">
+      <div class="hill h1"></div>
+      <div class="hill h2"></div>
+      <div class="hill h3"></div>
+      <div class="hill h4"></div>
+    </div>
+
+    <div class="layer" data-speed="0.75" id="layerTrees">
+      <!-- Carlos's scenery pieces (trees etc.) slot in here -->
+      <div class="tree" style="--x: 12vw"></div>
+      <div class="tree" style="--x: 38vw"></div>
+      <div class="tree" style="--x: 85vw"></div>
+      <div class="tree" style="--x: 150vw"></div>
+      <div class="tree" style="--x: 215vw"></div>
+      <div class="tree" style="--x: 300vw"></div>
+      <div class="tree" style="--x: 370vw"></div>
+      <div class="tree" style="--x: 430vw"></div>
+    </div>
+
+    <!-- main layer: road, milestones, and the car all live in world space -->
+    <div class="layer" data-speed="1" id="layerWorld">
+      <div class="road"></div>
+
+      <!-- milestone 1: the church (3D render from Figma goes in the img slot) -->
+      <button class="milestone" id="msChurch" style="--x: 210vw" aria-label="The wedding">
+        <div class="placeholder-church" id="churchArt">
+          <div class="steeple"></div>
+          <div class="nave"></div>
+        </div>
+        <span class="tap-ring" aria-hidden="true"></span>
+      </button>
+
+      <!-- milestone 2: the bassinet (big, per the sync) -->
+      <button class="milestone" id="msBassinet" style="--x: 400vw" aria-label="The baby">
+        <div class="placeholder-bassinet" id="bassinetArt">
+          <div class="hood"></div>
+          <div class="basket"></div>
+          <div class="legs"></div>
+        </div>
+        <span class="tap-ring" aria-hidden="true"></span>
+      </button>
+    </div>
+
+    <!-- the car sits at a fixed screen position; the world drives past it -->
+    <div class="car" id="car">
+      <!-- swap for the Figma red-convertible-with-couple render -->
+      <svg viewBox="0 0 240 110" class="car-svg" aria-hidden="true">
+        <ellipse cx="120" cy="104" rx="112" ry="6" fill="rgba(0,0,0,0.18)"/>
+        <path d="M18 78 Q18 58 42 56 L74 52 Q95 30 128 30 L164 30 Q186 32 196 52 L216 56 Q230 60 230 74 L228 84 Q226 90 218 90 L30 90 Q20 90 18 82 Z" fill="#d23c2a"/>
+        <path d="M80 52 Q98 36 126 36 L158 36 Q174 38 182 52 Z" fill="#2c2c34"/>
+        <circle cx="66" cy="90" r="17" fill="#22222a"/>
+        <circle cx="66" cy="90" r="8" fill="#cfcfd6" class="hub"/>
+        <circle cx="182" cy="90" r="17" fill="#22222a"/>
+        <circle cx="182" cy="90" r="8" fill="#cfcfd6" class="hub"/>
+      </svg>
+    </div>
+
+    <div class="layer" data-speed="1.35" id="layerFore">
+      <div class="bush" style="--x: 25vw"></div>
+      <div class="bush" style="--x: 120vw"></div>
+      <div class="bush" style="--x: 260vw"></div>
+      <div class="bush" style="--x: 390vw"></div>
+      <div class="bush" style="--x: 520vw"></div>
+    </div>
+
+    <!-- no on-board text: a wordless scroll cue that fades once they move -->
+    <div class="scroll-cue" id="scrollCue" aria-hidden="true">
+      <span class="chevron"></span><span class="chevron"></span>
+    </div>
+  </div>
+
+  <!-- scroll driver: its height creates the horizontal travel distance -->
+  <div id="scrollDriver"></div>
+
+  <!-- ============ INTRO: blurred world + small message card ============ -->
+  <section id="intro" class="popup-overlay intro-open">
+    <div class="popup-card intro-card">
+      <p class="intro-hi">Hi Jonny,</p>
+      <p>Congratulations on your new milestone. Here&rsquo;s a little something
+         from your friends at <strong>Pixel Dreams</strong>.</p>
+      <button class="btn btn-primary" id="startBtn">Take a drive</button>
+    </div>
+  </section>
+
+  <!-- ============ WEDDING POPUP (church click) ============ -->
+  <section id="weddingPopup" class="popup-overlay">
+    <div class="popup-card art-card">
+      <button class="popup-close" data-close="weddingPopup" aria-label="Close">&times;</button>
+      <img src="../assets/milestone-2.png" alt="Jonny and his wife on their wedding day">
+    </div>
+  </section>
+
+  <!-- ============ GIFT POPUP (bassinet click) ============ -->
+  <section id="giftPopup" class="popup-overlay">
+    <div class="popup-card gift-card-wrap">
+      <div class="gift-flip-row">
+        <div class="gift-flip" data-gift="Once Upon a Bedtime" tabindex="0">
+          <div class="gift-flip-inner">
+            <div class="gf-face gf-front"><h4>Once Upon a Bedtime</h4><p>The beginning of a lifetime of stories.</p></div>
+            <div class="gf-face gf-back">
+              <img src="../assets/gift-books.jpg" alt="Children's books and a bookmark">
+              <button class="btn btn-primary gf-select" type="button">Choose</button>
+            </div>
+          </div>
+        </div>
+        <div class="gift-flip" data-gift="The Days You'll Treasure" tabindex="0">
+          <div class="gift-flip-inner">
+            <div class="gf-face gf-front"><h4>The Days You&rsquo;ll Treasure</h4><p>Preserve the little moments.</p></div>
+            <div class="gf-face gf-back">
+              <img src="../assets/gift-keepsake.jpg" alt="A keepsake memory box">
+              <button class="btn btn-primary gf-select" type="button">Choose</button>
+            </div>
+          </div>
+        </div>
+        <div class="gift-flip" data-gift="A Moment Together" tabindex="0">
+          <div class="gift-flip-inner">
+            <div class="gf-face gf-front"><h4>A Moment Together</h4><p>Rest and reconnection.</p></div>
+            <div class="gf-face gf-back">
+              <img src="../assets/gift-spa.jpg" alt="A couples spa day">
+              <button class="btn btn-primary gf-select" type="button">Choose</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ADDRESS FORM ============ -->
+  <section id="formPopup" class="popup-overlay">
+    <div class="popup-card form-card">
+      <h3>Where should it fly to?</h3>
+      <p class="gift-line">Your gift: <strong id="chosenGiftLabel"></strong>
+        <button type="button" class="link-btn" id="changeGiftBtn">change my mind</button></p>
+      <form id="claimForm" novalidate>
+        <label for="fName">Name</label>
+        <input id="fName" type="text" autocomplete="name" required>
+        <label for="fPhone">Phone number</label>
+        <input id="fPhone" type="tel" autocomplete="tel" required>
+        <label for="fAddress">Delivery address</label>
+        <textarea id="fAddress" rows="3" autocomplete="street-address" required></textarea>
+        <p class="form-error" id="formError" role="alert"></p>
+        <button type="submit" class="btn btn-primary btn-wide">Send it my way</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ THANKS ============ -->
+  <section id="thanksPopup" class="popup-overlay">
+    <div class="popup-card">
+      <h3>Thank you &mdash; your gift is on its way!</h3>
+      <p>Here&rsquo;s to many more wonderful milestones ahead.</p>
+      <button class="btn btn-secondary" data-close="thanksPopup">Keep driving</button>
+    </div>
+  </section>
+
+  <script src="../js/vendor/gsap.min.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
