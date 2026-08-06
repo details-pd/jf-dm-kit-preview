@@ -132,16 +132,13 @@ body {
   100% { transform: scale(1.35); opacity: 0; }
 }
 
-/* placeholder church (swaps for the 3D render) */
-.placeholder-church { position: relative; width: 22vmin; height: 26vmin; }
-.placeholder-church .nave {
-  position: absolute; bottom: 0; left: 0; width: 100%; height: 55%;
-  background: #e8e0d0; border: 0.5vmin solid #b9ad94; border-radius: 1vmin 1vmin 0 0;
-}
-.placeholder-church .steeple {
-  position: absolute; bottom: 52%; left: 32%; width: 36%; height: 48%;
-  background: #efe8da; border: 0.5vmin solid #b9ad94;
-  clip-path: polygon(50% 0, 100% 38%, 100% 100%, 0 100%, 0 38%);
+/* the church render — soft radial mask melts its painted sky into ours */
+.church-art {
+  display: block;
+  width: 52vmin;
+  height: auto;
+  -webkit-mask-image: radial-gradient(ellipse 68% 62% at 50% 55%, #000 55%, transparent 78%);
+  mask-image: radial-gradient(ellipse 68% 62% at 50% 55%, #000 55%, transparent 78%);
 }
 
 /* placeholder bassinet ("a big one") */
@@ -165,11 +162,19 @@ body {
 .car {
   position: absolute;
   left: 30vw;
-  bottom: 24.5vh;
-  width: clamp(160px, 18vw, 300px);
+  bottom: 23.5vh;
+  width: clamp(180px, 20vw, 340px);
   z-index: 5;
 }
-.car-svg { width: 100%; height: auto; }
+/* renders face left; mirror so the drive reads left-to-right */
+.car-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  transform: scaleX(-1);
+  filter: drop-shadow(0 10px 10px rgba(20, 24, 32, 0.3));
+}
+.car-couple { position: absolute; inset: 0; opacity: 0; }
 
 /* --- foreground --- */
 .bush {
@@ -232,9 +237,23 @@ body {
 }
 .popup-close:hover { opacity: 1; }
 
-.intro-card .intro-hi { font-weight: 800; color: var(--blue-dark); font-size: 1.3em; margin-bottom: 0.4em; }
-.intro-card p { margin-bottom: 0.6em; }
-.intro-card .btn { margin-top: 1em; }
+/* intro matches the Figma beginning screen: white card, plain copy left,
+   car render bottom-right */
+.intro-card {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 1rem;
+  align-items: end;
+  text-align: left;
+  background: #fff;
+  border-radius: 8px;
+  max-width: min(880px, 92vw);
+}
+.intro-copy { align-self: start; padding-top: 1rem; }
+.intro-card .intro-hi { margin-bottom: 1.2em; }
+.intro-card p { margin-bottom: 0.6em; font-size: clamp(1rem, 1.6vw, 1.35rem); line-height: 1.45; }
+.intro-card .btn { margin-top: 1.4em; }
+.intro-car { width: 100%; height: auto; display: block; }
 
 .art-card img { max-width: min(520px, 80vw); max-height: 70vh; display: block; }
 

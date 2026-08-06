@@ -46,12 +46,9 @@
     <div class="layer" data-speed="1" id="layerWorld">
       <div class="road"></div>
 
-      <!-- milestone 1: the church (3D render from Figma goes in the img slot) -->
+      <!-- milestone 1: the church (Kharisel's Magnific render) -->
       <button class="milestone" id="msChurch" style="--x: 210vw" aria-label="The wedding">
-        <div class="placeholder-church" id="churchArt">
-          <div class="steeple"></div>
-          <div class="nave"></div>
-        </div>
+        <img class="church-art" src="assets/church.png" alt="">
         <span class="tap-ring" aria-hidden="true"></span>
       </button>
 
@@ -66,18 +63,11 @@
       </button>
     </div>
 
-    <!-- the car sits at a fixed screen position; the world drives past it -->
+    <!-- the car sits at a fixed screen position; the world drives past it.
+         Jonny drives alone; his wife joins after the wedding milestone. -->
     <div class="car" id="car">
-      <!-- swap for the Figma red-convertible-with-couple render -->
-      <svg viewBox="0 0 240 110" class="car-svg" aria-hidden="true">
-        <ellipse cx="120" cy="104" rx="112" ry="6" fill="rgba(0,0,0,0.18)"/>
-        <path d="M18 78 Q18 58 42 56 L74 52 Q95 30 128 30 L164 30 Q186 32 196 52 L216 56 Q230 60 230 74 L228 84 Q226 90 218 90 L30 90 Q20 90 18 82 Z" fill="#d23c2a"/>
-        <path d="M80 52 Q98 36 126 36 L158 36 Q174 38 182 52 Z" fill="#2c2c34"/>
-        <circle cx="66" cy="90" r="17" fill="#22222a"/>
-        <circle cx="66" cy="90" r="8" fill="#cfcfd6" class="hub"/>
-        <circle cx="182" cy="90" r="17" fill="#22222a"/>
-        <circle cx="182" cy="90" r="8" fill="#cfcfd6" class="hub"/>
-      </svg>
+      <canvas id="carJonny" class="car-img"></canvas>
+      <canvas id="carCouple" class="car-img car-couple"></canvas>
     </div>
 
     <div class="layer" data-speed="1.35" id="layerFore">
@@ -100,10 +90,13 @@
   <!-- ============ INTRO: blurred world + small message card ============ -->
   <section id="intro" class="popup-overlay intro-open">
     <div class="popup-card intro-card">
-      <p class="intro-hi">Hi Jonny,</p>
-      <p>Congratulations on your new milestone. Here&rsquo;s a little something
-         from your friends at <strong>Pixel Dreams</strong>.</p>
-      <button class="btn btn-primary" id="startBtn">Take a drive</button>
+      <div class="intro-copy">
+        <p class="intro-hi">Hi Jonny,</p>
+        <p>Congratulation on your new milestone. Here&rsquo;s a little
+           something from your friends at Pixel Dreams.</p>
+        <button class="btn btn-primary" id="startBtn">Take a drive</button>
+      </div>
+      <img class="intro-car" src="assets/car-jonny.png" alt="Jonny waving from a red convertible">
     </div>
   </section>
 

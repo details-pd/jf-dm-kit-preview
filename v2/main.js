@@ -10,6 +10,55 @@ const stage = el("stage");
 const scrollCue = el("scrollCue");
 const car = el("car");
 
+/* ---------- car sprites: strip the render's beige backdrop ----------
+   Flood-fill from the borders so interior whites (racing stripes,
+   headlights) survive — a plain chroma key would eat them. */
+function loadCarSprite(canvasId, src) {
+  const canvas = el(canvasId);
+  const img = new Image();
+  img.onload = () => {
+    const w = (canvas.width = img.width);
+    const h = (canvas.height = img.height);
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0);
+    const data = ctx.getImageData(0, 0, w, h);
+    const px = data.data;
+    const bgLike = (i) => {
+      const r = px[i], g = px[i + 1], b = px[i + 2];
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      return min > 195 && max - min < 26; // pale, low-saturation beige/white
+    };
+    const visited = new Uint8Array(w * h);
+    const queue = [];
+    for (let x = 0; x < w; x++) { queue.push(x, x + (h - 1) * w); }
+    for (let y = 0; y < h; y++) { queue.push(y * w, y * w + w - 1); }
+    while (queue.length) {
+      const p = queue.pop();
+      if (visited[p]) continue;
+      visited[p] = 1;
+      if (!bgLike(p * 4)) continue;
+      px[p * 4 + 3] = 0;
+      const x = p % w, y = (p / w) | 0;
+      if (x > 0) queue.push(p - 1);
+      if (x < w - 1) queue.push(p + 1);
+      if (y > 0) queue.push(p - w);
+      if (y < h - 1) queue.push(p + w);
+    }
+    ctx.putImageData(data, 0, 0);
+  };
+  img.src = src;
+}
+loadCarSprite("carJonny", "assets/car-jonny.png");
+loadCarSprite("carCouple", "assets/car-couple.png");
+
+/* wife joins the drive after the wedding milestone */
+function wifeJoinsCar() {
+  gsap.timeline()
+    .to("#carJonny", { opacity: 0, duration: 0.35 }, 0.1)
+    .fromTo("#carCouple", { opacity: 0 }, { opacity: 1, duration: 0.45 }, 0)
+    .fromTo(car, { scale: 1 }, { scale: 1.06, yoyo: true, repeat: 1, duration: 0.2 }, 0.1);
+}
+
 /* ---------- world geometry ---------- */
 // how far the world scrolls horizontally, in viewport-widths
 const WORLD_VW = 5.6;
@@ -56,7 +105,10 @@ function armMilestones() {
     const node = el(m.id);
     const rect = node.getBoundingClientRect();
     const carRect = car.getBoundingClientRect();
-    const near = Math.abs(rect.left + rect.width / 2 - (carRect.left + carRect.width / 2)) < window.innerWidth * 0.25;
+    // armed while the landmark sits AHEAD of the car (car pulls up beside
+    // it, not on top of it) — dx is landmark-center minus car-center
+    const dx = rect.left + rect.width / 2 - (carRect.left + carRect.width / 2);
+    const near = dx > window.innerWidth * 0.02 && dx < window.innerWidth * 0.45;
     node.classList.toggle("armed", near);
   });
 }
@@ -72,8 +124,16 @@ function closePopup(id) {
   if (!document.querySelector(".popup-overlay.open")) stage.classList.remove("blurred");
 }
 
+let wifeAboard = false;
 document.querySelectorAll("[data-close]").forEach((btn) =>
-  btn.addEventListener("click", () => closePopup(btn.dataset.close)));
+  btn.addEventListener("click", () => {
+    closePopup(btn.dataset.close);
+    // closing the wedding card is the moment she hops in
+    if (btn.dataset.close === "weddingPopup" && !wifeAboard) {
+      wifeAboard = true;
+      wifeJoinsCar();
+    }
+  }));
 
 el("msChurch").addEventListener("click", () => openPopup("weddingPopup"));
 el("msBassinet").addEventListener("click", () => openPopup("giftPopup"));
