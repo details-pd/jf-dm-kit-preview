@@ -13,69 +13,41 @@
   <!-- Page scroll (vertical) drives the world horizontally. Every .layer
        moves at its own speed for parallax depth. Placeholder art throughout —
        each img/div slot swaps for Kharisel's Figma exports. -->
+  <!-- Kharisel's finalized world (Aug 6 EOD): three exported Figma layer
+       groups recompose the Main Board frame with true parallax depth.
+       Layer geometry comes straight from the Figma bounding boxes
+       (design space: 1080px == 100vh). -->
   <div id="stage" class="stage" aria-label="A drive through Jonny's journey">
 
-    <div class="layer" data-speed="0.15" id="layerSky">
-      <div class="sun"></div>
-      <div class="cloud c1"></div>
-      <div class="cloud c2"></div>
-      <div class="cloud c3"></div>
-      <div class="cloud c4"></div>
+    <div class="layer" data-speed="0.35" id="layerBg">
+      <div class="plane plane-bg">
+        <img class="layer-art" src="assets/layer-bg.png" alt="">
+      </div>
     </div>
 
-    <div class="layer" data-speed="0.45" id="layerHills">
-      <div class="hill h1"></div>
-      <div class="hill h2"></div>
-      <div class="hill h3"></div>
-      <div class="hill h4"></div>
+    <div class="layer" data-speed="0.7" id="layerMid">
+      <div class="plane plane-mid">
+        <img class="layer-art" src="assets/layer-mid.png" alt="">
+        <!-- milestone 1: the lit-up house (hitbox over the baked-in art) -->
+        <button class="milestone" id="msChurch" aria-label="The wedding">
+          <span class="tap-ring" aria-hidden="true"></span>
+        </button>
+      </div>
     </div>
 
-    <div class="layer" data-speed="0.75" id="layerTrees">
-      <!-- Carlos's scenery pieces (trees etc.) slot in here -->
-      <div class="tree" style="--x: 12vw"></div>
-      <div class="tree" style="--x: 38vw"></div>
-      <div class="tree" style="--x: 85vw"></div>
-      <div class="tree" style="--x: 150vw"></div>
-      <div class="tree" style="--x: 215vw"></div>
-      <div class="tree" style="--x: 300vw"></div>
-      <div class="tree" style="--x: 370vw"></div>
-      <div class="tree" style="--x: 430vw"></div>
-    </div>
-
-    <!-- main layer: road, milestones, and the car all live in world space -->
-    <div class="layer" data-speed="1" id="layerWorld">
-      <div class="road"></div>
-
-      <!-- milestone 1: the church (Kharisel's Magnific render) -->
-      <button class="milestone" id="msChurch" style="--x: 210vw" aria-label="The wedding">
-        <img class="church-art" src="assets/church.png" alt="">
-        <span class="tap-ring" aria-hidden="true"></span>
-      </button>
-
-      <!-- milestone 2: the bassinet (big, per the sync) -->
-      <button class="milestone" id="msBassinet" style="--x: 400vw" aria-label="The baby">
-        <div class="placeholder-bassinet" id="bassinetArt">
-          <div class="hood"></div>
-          <div class="basket"></div>
-          <div class="legs"></div>
-        </div>
-        <span class="tap-ring" aria-hidden="true"></span>
-      </button>
-    </div>
-
-    <!-- the car sits at a fixed screen position; the world drives past it.
-         Jonny drives alone; his wife joins after the wedding milestone. -->
+    <!-- the car sits at a fixed screen position; the world drives past it -->
     <div class="car" id="car">
-      <canvas id="carJonny" class="car-img"></canvas>
-      <canvas id="carCouple" class="car-img car-couple"></canvas>
+      <img class="car-img" src="assets/car-side.png" alt="">
     </div>
 
-    <div class="layer" data-speed="1.35" id="layerFore">
-      <div class="bush" style="--x: 25vw"></div>
-      <div class="bush" style="--x: 120vw"></div>
-      <div class="bush" style="--x: 260vw"></div>
-      <div class="bush" style="--x: 390vw"></div>
-      <div class="bush" style="--x: 520vw"></div>
+    <div class="layer" data-speed="1" id="layerFg">
+      <div class="plane plane-fg">
+        <img class="layer-art" src="assets/layer-fg.png" alt="">
+        <!-- milestone 2: the yellow bassinet (hitbox over the baked-in art) -->
+        <button class="milestone" id="msBassinet" aria-label="The baby">
+          <span class="tap-ring" aria-hidden="true"></span>
+        </button>
+      </div>
     </div>
 
     <!-- no on-board text: a wordless scroll cue that fades once they move -->
