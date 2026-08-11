@@ -10,16 +10,37 @@ const stage = el("stage");
 const scrollCue = el("scrollCue");
 const car = el("car");
 
+/* ---------- stable viewport unit ----------
+   iOS collapses/expands its toolbar while scrolling, which changes vh and
+   made the whole world (car included) resize mid-drive. Everything is
+   sized with --u instead: 1% of the LARGE viewport (100lvh), measured
+   here, which stays constant while the toolbar moves. */
+let UNIT = window.innerHeight / 100;
+function measureUnit() {
+  const probe = document.createElement("div");
+  probe.style.cssText =
+    "position:fixed;top:0;left:0;width:1px;visibility:hidden;pointer-events:none;height:100vh;";
+  if (window.CSS && CSS.supports("height", "100lvh")) probe.style.height = "100lvh";
+  document.body.appendChild(probe);
+  UNIT = probe.getBoundingClientRect().height / 100;
+  probe.remove();
+  document.documentElement.style.setProperty("--u", UNIT + "px");
+}
+measureUnit();
+
 /* ---------- world geometry (Screen 02 frame: 4628 x 1080) ---------- */
 const FRAME_W = 4628, FRAME_H = 1080;
-const worldWidth = () => FRAME_W * (window.innerHeight / FRAME_H);
+const worldWidth = () => FRAME_W * (UNIT * 100 / FRAME_H);
 const travel = () => Math.max(0, worldWidth() - window.innerWidth);
 
 function sizeScrollDriver() {
   el("scrollDriver").style.height = window.innerHeight + travel() + "px";
 }
 sizeScrollDriver();
-window.addEventListener("resize", sizeScrollDriver);
+window.addEventListener("resize", () => {
+  measureUnit();
+  sizeScrollDriver();
+});
 
 /* ---------- car sprite + spinning wheels ----------
    The driving-pose render has a speckled near-white backdrop: flood-fill
@@ -28,11 +49,53 @@ window.addEventListener("resize", sizeScrollDriver);
    as circular crops and rotated in place — seamless. */
 const CAR_SRC = "assets/jonny-car-drive.png";
 const CAR_ASPECT = 2156 / 2694; // sprite h/w
+/* cx/cy/r are detected from the sprite's silver rims at load — hand-tuned
+   values wobbled because the crop wasn't perfectly concentric */
 const WHEELS = [
-  { id: "wheelRear",  cx: 0.212, cy: 0.652, r: 0.060 },
-  { id: "wheelFront", cx: 0.767, cy: 0.652, r: 0.060 },
+  { id: "wheelRear",  side: "left",  cx: 0, cy: 0, r: 0 },
+  { id: "wheelFront", side: "right", cx: 0, cy: 0, r: 0 },
 ];
 let wheelRadiusPx = 0; // on-screen radius, for rotation math
+
+/* find each wheel's exact center: centroid of the silver rim pixels inside
+   a tight window around the wheel (grays only — the blue-tinted windshield
+   glass fooled a looser version of this) */
+function detectWheels(px, w, h) {
+  const windows = {
+    left:  { x0: 0.16, x1: 0.27, y0: 0.58, y1: 0.73 },
+    right: { x0: 0.71, x1: 0.83, y0: 0.58, y1: 0.73 },
+  };
+  WHEELS.forEach((wl) => {
+    const win = windows[wl.side];
+    const pts = [];
+    let sx = 0, sy = 0;
+    for (let y = Math.floor(win.y0 * h); y < win.y1 * h; y++) {
+      for (let x = Math.floor(win.x0 * w); x < win.x1 * w; x++) {
+        const i = (y * w + x) * 4;
+        if (px[i + 3] < 200) continue;
+        const r = px[i], g = px[i + 1], bl = px[i + 2];
+        const mx = Math.max(r, g, bl), mn = Math.min(r, g, bl);
+        if (mn > 170 && mx < 245 && mx - mn < 20 && bl - r < 12) {
+          pts.push(x, y); sx += x; sy += y;
+        }
+      }
+    }
+    const n = pts.length / 2;
+    if (!n) return;
+    const cx = sx / n, cy = sy / n;
+    // robust rim radius: stray bright pixels at the tire edge poison the
+    // max, so take the 90th percentile distance instead
+    const ds = [];
+    for (let k = 0; k < pts.length; k += 2) {
+      ds.push(Math.hypot(pts[k] - cx, pts[k + 1] - cy));
+    }
+    ds.sort((a, b) => a - b);
+    const rimR = ds[Math.floor(ds.length * 0.9)];
+    wl.cx = cx / w;
+    wl.cy = cy / h;
+    wl.r = (rimR * 1.25) / w; // into the tire ring, not past it
+  });
+}
 
 function loadCar() {
   const img = new Image();
@@ -70,6 +133,7 @@ function loadCar() {
     carCanvas.width = w; carCanvas.height = h;
     carCanvas.getContext("2d").drawImage(off, 0, 0);
 
+    detectWheels(px, w, h);
     WHEELS.forEach((wl) => {
       const size = Math.round(2 * wl.r * w);
       const canvas = el(wl.id);
@@ -117,18 +181,18 @@ let lastX = 0;
 
 /* ---------- the car can't drive past a milestone until it's been seen ----------
    Gate limits are computed analytically from the layer geometry (stale
-   DOM rects let fast scroll jumps leap the wall). Landmark centers in vh,
-   from the plane offsets + hitbox fractions in styles.css:
-   house  (mid plane, speed 0.7): -5vh  + 36.55% of 450.8vh = 159.8vh
-   bassinet (fg plane, speed 1.0): -24.3vh + 74.8% of 475.6vh = 331.4vh */
+   DOM rects let fast scroll jumps leap the wall). Landmark centers in
+   stable units, from the plane offsets + hitbox fractions in styles.css:
+   house  (mid plane, speed 0.7): -5u  + 36.55% of 450.8u = 159.8u
+   bassinet (fg plane, speed 1.0): -24.3u + 74.8% of 475.6u = 331.4u */
 const GATE_DX = 0.18; // stop with the landmark this far ahead (of vw)
 const seen = { msHouse: false, msBassinet: false };
 
 function gateLimit() {
-  const vh = window.innerHeight / 100, vw = window.innerWidth / 100;
-  const carCenter = 25 * vw + 23 * vh; // car left 25vw + half of 46vh width
-  if (!seen.msHouse) return (159.8 * vh - carCenter - GATE_DX * 100 * vw) / 0.7;
-  if (!seen.msBassinet) return (331.4 * vh - carCenter - GATE_DX * 100 * vw) / 1.0;
+  const vw = window.innerWidth / 100;
+  const carCenter = 25 * vw + 23 * UNIT; // car left 25vw + half of 46u width
+  if (!seen.msHouse) return (159.8 * UNIT - carCenter - GATE_DX * 100 * vw) / 0.7;
+  if (!seen.msBassinet) return (331.4 * UNIT - carCenter - GATE_DX * 100 * vw) / 1.0;
   return Infinity;
 }
 
