@@ -67,9 +67,9 @@ h1, h2, .caption-chip {
 
 #layerBg  { z-index: 1; }
 #layerMid { z-index: 2; }
-.car      { z-index: 3; }
 #layerFg  { z-index: 4; pointer-events: none; }
 #layerFg .milestone { pointer-events: auto; }
+.car      { z-index: 5; } /* the car drives IN FRONT of the bassinet/foreground */
 
 /* milestone hitboxes over the baked-in house / bassinet art */
 .milestone {
@@ -93,6 +93,38 @@ h1, h2, .caption-chip {
 }
 .milestone.armed .ms-stars { opacity: 1; }
 
+/* CTA chip when the car pulls up (styled like the popup caption chips) */
+.ms-cta {
+  position: absolute;
+  left: 50%;
+  top: -9vh;
+  transform: translateX(-50%) rotate(-3deg);
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--heading);
+  font-stretch: 87.5%;
+  font-weight: 800;
+  font-size: 2.5vh;
+  line-height: 1.1;
+  white-space: nowrap;
+  padding: 1.2vh 2vh;
+  border-radius: 1.4vh;
+  box-shadow: 0 0.7vh 2vh rgba(5, 8, 18, 0.45);
+  opacity: 0;
+  transition: opacity 400ms ease;
+  pointer-events: none;
+}
+.milestone.armed .ms-cta {
+  opacity: 1;
+  animation: cta-bob 1.6s ease-in-out infinite;
+}
+@keyframes cta-bob {
+  0%, 100% { transform: translateX(-50%) rotate(-3deg) translateY(0); }
+  50% { transform: translateX(-50%) rotate(-3deg) translateY(-1.2vh); }
+}
+/* the bassinet is tall — keep its chip clear of the hood */
+#msBassinet .ms-cta { top: -12vh; }
+
 /* the car */
 .car {
   position: absolute;
@@ -105,6 +137,13 @@ h1, h2, .caption-chip {
   width: 100%;
   height: auto;
   filter: drop-shadow(0 1vh 1.6vh rgba(5, 8, 18, 0.35));
+}
+/* circular self-crops of the sprite's wheels, spun by scroll (JS places them) */
+.wheel {
+  position: absolute;
+  border-radius: 50%;
+  will-change: transform;
+  pointer-events: none;
 }
 
 /* wordless scroll cue */

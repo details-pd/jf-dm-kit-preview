@@ -30,13 +30,18 @@
         <!-- milestone 1: the lit-up house -->
         <button class="milestone" id="msHouse" aria-label="The wedding milestone">
           <img class="ms-stars" src="assets/stars.png" alt="">
+          <span class="ms-cta">Take a peek inside!</span>
         </button>
       </div>
     </div>
 
-    <!-- the car holds its screen spot; the world drives past -->
+    <!-- the car holds its screen spot; the world drives past.
+         Wheel canvases are circular crops of the sprite's own wheels,
+         spun in place as the world scrolls. -->
     <div class="car" id="car">
-      <img class="car-img" src="assets/jonny-car.png" alt="Jonny driving a red convertible">
+      <img class="car-img" id="carImg" src="assets/jonny-car.png" alt="Jonny driving a red convertible">
+      <canvas class="wheel" id="wheelRear"></canvas>
+      <canvas class="wheel" id="wheelFront"></canvas>
     </div>
 
     <div class="layer" data-speed="1" id="layerFg">
@@ -45,6 +50,7 @@
         <!-- milestone 2: the yellow bassinet -->
         <button class="milestone" id="msBassinet" aria-label="The baby milestone">
           <img class="ms-stars" src="assets/stars.png" alt="">
+          <span class="ms-cta">One more surprise!</span>
         </button>
       </div>
     </div>

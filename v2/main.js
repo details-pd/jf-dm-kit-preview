@@ -21,6 +21,60 @@ function sizeScrollDriver() {
 sizeScrollDriver();
 window.addEventListener("resize", sizeScrollDriver);
 
+/* ---------- spinning wheels ----------
+   The wheels are baked into the sprite, so we lift each wheel out as a
+   circular crop of the SAME pixels and rotate it in place — seamless.
+   Fractions of the sprite (center x, center y, radius), tuned to the art. */
+const WHEELS = [
+  { id: "wheelRear",  cx: 0.212, cy: 0.712, r: 0.088 },
+  { id: "wheelFront", cx: 0.769, cy: 0.712, r: 0.088 },
+];
+let wheelRadiusPx = 0; // on-screen radius, for rotation math
+
+function buildWheels() {
+  const img = new Image();
+  img.onload = () => {
+    WHEELS.forEach((w) => {
+      const size = Math.round(2 * w.r * img.width);
+      const canvas = el(w.id);
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      ctx.beginPath();
+      ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(img,
+        w.cx * img.width - size / 2, w.cy * img.height - size / 2, size, size,
+        0, 0, size, size);
+      placeWheel(w);
+    });
+  };
+  img.src = "assets/jonny-car.png";
+}
+
+function placeWheel(w) {
+  const carW = car.offsetWidth;
+  const d = 2 * w.r * carW; // sprite is square, so fractions map 1:1
+  const canvas = el(w.id);
+  canvas.style.width = d + "px";
+  canvas.style.height = d + "px";
+  canvas.style.left = w.cx * carW - d / 2 + "px";
+  canvas.style.top = w.cy * carW - d / 2 + "px";
+  wheelRadiusPx = d / 2;
+}
+
+window.addEventListener("resize", () => WHEELS.forEach(placeWheel));
+buildWheels();
+
+function spinWheels(x) {
+  if (!wheelRadiusPx) return;
+  // world moves 1:1 with scroll in the car's plane; deg = arc / circumference
+  const deg = (x / (2 * Math.PI * wheelRadiusPx)) * 360;
+  WHEELS.forEach((w) => {
+    el(w.id).style.transform = `rotate(${deg}deg)`;
+  });
+}
+
 /* ---------- parallax ---------- */
 const layers = document.querySelectorAll(".layer");
 let lastX = 0;
@@ -32,6 +86,7 @@ function render() {
   });
   const moving = Math.abs(x - lastX) > 0.5;
   gsap.to(car, { y: moving ? -4 : 0, duration: 0.3, overwrite: "auto" });
+  spinWheels(x);
   lastX = x;
   armMilestones();
   if (x > 40) scrollCue.classList.add("hidden");
