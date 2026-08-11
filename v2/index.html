@@ -4,19 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title>A Little Something</title>
-  <link rel="stylesheet" href="styles.css">
+  <title>Every Great Journey</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@10..48,75..100,200..800&family=DM+Sans:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=10">
 </head>
 <body>
 
-  <!-- ============ FIXED STAGE: the side-scrolling world ============ -->
-  <!-- Page scroll (vertical) drives the world horizontally. Every .layer
-       moves at its own speed for parallax depth. Placeholder art throughout —
-       each img/div slot swaps for Kharisel's Figma exports. -->
-  <!-- Kharisel's finalized world (Aug 6 EOD): three exported Figma layer
-       groups recompose the Main Board frame with true parallax depth.
-       Layer geometry comes straight from the Figma bounding boxes
-       (design space: 1080px == 100vh). -->
+  <!-- ============ SCREEN 02: the world the car drives through ============
+       Kharisel's Main Board frame recomposed from its three exported layer
+       groups (Background / Middleground / Foreground) with parallax.
+       Geometry from the Figma bounding boxes; 1080 design px == 100vh. -->
   <div id="stage" class="stage" aria-label="A drive through Jonny's journey">
 
     <div class="layer" data-speed="0.35" id="layerBg">
@@ -28,29 +27,29 @@
     <div class="layer" data-speed="0.7" id="layerMid">
       <div class="plane plane-mid">
         <img class="layer-art" src="assets/layer-mid.png" alt="">
-        <!-- milestone 1: the lit-up house (hitbox over the baked-in art) -->
-        <button class="milestone" id="msChurch" aria-label="The wedding">
-          <span class="tap-ring" aria-hidden="true"></span>
+        <!-- milestone 1: the lit-up house -->
+        <button class="milestone" id="msHouse" aria-label="The wedding milestone">
+          <img class="ms-stars" src="assets/stars.png" alt="">
         </button>
       </div>
     </div>
 
-    <!-- the car sits at a fixed screen position; the world drives past it -->
+    <!-- the car holds its screen spot; the world drives past -->
     <div class="car" id="car">
-      <img class="car-img" src="assets/car-side.png" alt="">
+      <img class="car-img" src="assets/jonny-car.png" alt="Jonny driving a red convertible">
     </div>
 
     <div class="layer" data-speed="1" id="layerFg">
       <div class="plane plane-fg">
         <img class="layer-art" src="assets/layer-fg.png" alt="">
-        <!-- milestone 2: the yellow bassinet (hitbox over the baked-in art) -->
-        <button class="milestone" id="msBassinet" aria-label="The baby">
-          <span class="tap-ring" aria-hidden="true"></span>
+        <!-- milestone 2: the yellow bassinet -->
+        <button class="milestone" id="msBassinet" aria-label="The baby milestone">
+          <img class="ms-stars" src="assets/stars.png" alt="">
         </button>
       </div>
     </div>
 
-    <!-- no on-board text: a wordless scroll cue that fades once they move -->
+    <!-- wordless scroll cue -->
     <div class="scroll-cue" id="scrollCue" aria-hidden="true">
       <span class="chevron"></span><span class="chevron"></span>
     </div>
@@ -59,66 +58,72 @@
   <!-- scroll driver: its height creates the horizontal travel distance -->
   <div id="scrollDriver"></div>
 
-  <!-- ============ INTRO: blurred world + small message card ============ -->
-  <section id="intro" class="popup-overlay intro-open">
-    <div class="popup-card intro-card">
-      <div class="intro-copy">
-        <p class="intro-hi">Hi Jonny,</p>
-        <p>Congratulation on your new milestone. Here&rsquo;s a little
-           something from your friends at Pixel Dreams.</p>
-        <button class="btn btn-primary" id="startBtn">Take a drive</button>
+  <!-- ============ SCREEN 01: first page ============ -->
+  <section id="intro" class="overlay dim-full">
+    <div class="intro-card">
+      <h1>Every great journey<br>has many little steps.</h1>
+      <p>A little something from your friends at<br>Pixel Dreams</p>
+      <button class="btn-pill" id="startBtn">Let&rsquo;s celebrate!</button>
+      <span class="intro-emoji" aria-hidden="true">🥳</span>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN 3 / 4: milestone popups (spotlight + card) ============ -->
+  <section id="msPopup" class="overlay spotlight" aria-live="polite">
+    <div class="ms-card" id="msCard">
+      <img id="msCardImg" src="" alt="">
+      <div class="caption-chip" id="msCaption"></div>
+    </div>
+  </section>
+
+  <!-- ============ SCREENS 5/6: gift cards ============ -->
+  <section id="giftScreen" class="overlay dim-full">
+    <div class="gift-stage">
+      <h2 class="gift-title">Congratulation in the<br>new milestone Jonny!</h2>
+      <p class="gift-sub">Here&rsquo;s something special to celebrate</p>
+      <div class="gift-row">
+
+        <div class="gift-card" data-gift="Once Upon a Bedtime" tabindex="0">
+          <div class="gift-inner">
+            <img class="gift-back" src="assets/card-back.png" alt="">
+            <div class="gift-face">
+              <img src="assets/gift-face-1.png" alt="A bedtime gift set: night light, Smith tea box, children's books, and a constellation sleep sack">
+              <span class="gift-name">Once Upon a Bedtime</span>
+            </div>
+          </div>
+          <button class="btn-pill gift-choose" type="button">Choose this gift</button>
+        </div>
+
+        <div class="gift-card" data-gift="The Days You'll Treasure" tabindex="0">
+          <div class="gift-inner">
+            <img class="gift-back" src="assets/card-back.png" alt="">
+            <div class="gift-face">
+              <img src="assets/gift-face-2.png" alt="A keepsake dresser box with baby shoes and blankets">
+              <span class="gift-name">The Days You&rsquo;ll Treasure</span>
+            </div>
+          </div>
+          <button class="btn-pill gift-choose" type="button">Choose this gift</button>
+        </div>
+
+        <div class="gift-card" data-gift="A Moment Together" tabindex="0">
+          <div class="gift-inner">
+            <img class="gift-back" src="assets/card-back.png" alt="">
+            <div class="gift-face">
+              <img src="assets/gift-face-3.png" alt="A spa set with rolled towels, candles, and flowers">
+              <span class="gift-name">A Moment Together</span>
+            </div>
+          </div>
+          <button class="btn-pill gift-choose" type="button">Choose this gift</button>
+        </div>
+
       </div>
-      <img class="intro-car" src="assets/car-jonny.png" alt="Jonny waving from a red convertible">
     </div>
   </section>
 
-  <!-- ============ WEDDING POPUP (church click) ============ -->
-  <section id="weddingPopup" class="popup-overlay">
-    <div class="popup-card art-card">
-      <button class="popup-close" data-close="weddingPopup" aria-label="Close">&times;</button>
-      <img src="../assets/milestone-2.png" alt="Jonny and his wife on their wedding day">
-    </div>
-  </section>
-
-  <!-- ============ GIFT POPUP (bassinet click) ============ -->
-  <section id="giftPopup" class="popup-overlay">
-    <div class="popup-card gift-card-wrap">
-      <div class="gift-flip-row">
-        <div class="gift-flip" data-gift="Once Upon a Bedtime" tabindex="0">
-          <div class="gift-flip-inner">
-            <div class="gf-face gf-front"><h4>Once Upon a Bedtime</h4><p>The beginning of a lifetime of stories.</p></div>
-            <div class="gf-face gf-back">
-              <img src="../assets/gift-books.jpg" alt="Children's books and a bookmark">
-              <button class="btn btn-primary gf-select" type="button">Choose</button>
-            </div>
-          </div>
-        </div>
-        <div class="gift-flip" data-gift="The Days You'll Treasure" tabindex="0">
-          <div class="gift-flip-inner">
-            <div class="gf-face gf-front"><h4>The Days You&rsquo;ll Treasure</h4><p>Preserve the little moments.</p></div>
-            <div class="gf-face gf-back">
-              <img src="../assets/gift-keepsake.jpg" alt="A keepsake memory box">
-              <button class="btn btn-primary gf-select" type="button">Choose</button>
-            </div>
-          </div>
-        </div>
-        <div class="gift-flip" data-gift="A Moment Together" tabindex="0">
-          <div class="gift-flip-inner">
-            <div class="gf-face gf-front"><h4>A Moment Together</h4><p>Rest and reconnection.</p></div>
-            <div class="gf-face gf-back">
-              <img src="../assets/gift-spa.jpg" alt="A couples spa day">
-              <button class="btn btn-primary gf-select" type="button">Choose</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============ ADDRESS FORM ============ -->
-  <section id="formPopup" class="popup-overlay">
-    <div class="popup-card form-card">
-      <h3>Where should it fly to?</h3>
+  <!-- ============ ADDRESS FORM (no dedicated screen design; styled to match) ============ -->
+  <section id="formScreen" class="overlay dim-full">
+    <div class="form-card">
+      <h2>Where should it fly to?</h2>
       <p class="gift-line">Your gift: <strong id="chosenGiftLabel"></strong>
         <button type="button" class="link-btn" id="changeGiftBtn">change my mind</button></p>
       <form id="claimForm" novalidate>
@@ -129,21 +134,21 @@
         <label for="fAddress">Delivery address</label>
         <textarea id="fAddress" rows="3" autocomplete="street-address" required></textarea>
         <p class="form-error" id="formError" role="alert"></p>
-        <button type="submit" class="btn btn-primary btn-wide">Send it my way</button>
+        <button type="submit" class="btn-pill btn-wide">Send it my way</button>
       </form>
     </div>
   </section>
 
   <!-- ============ THANKS ============ -->
-  <section id="thanksPopup" class="popup-overlay">
-    <div class="popup-card">
-      <h3>Thank you &mdash; your gift is on its way!</h3>
+  <section id="thanksScreen" class="overlay dim-full">
+    <div class="form-card thanks-card">
+      <h2>Thank you &mdash; your gift is on its way!</h2>
       <p>Here&rsquo;s to many more wonderful milestones ahead.</p>
-      <button class="btn btn-secondary" data-close="thanksPopup">Keep driving</button>
+      <button class="btn-pill" data-close="thanksScreen">Keep driving</button>
     </div>
   </section>
 
   <script src="../js/vendor/gsap.min.js"></script>
-  <script src="main.js"></script>
+  <script src="main.js?v=10"></script>
 </body>
 </html>

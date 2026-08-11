@@ -1,8 +1,8 @@
 /* =========================================================
-   Jonny Fruits DM Kit v2 — side-scrolling parallax drive
-   Vertical page scroll drives the world horizontally.
-   Flow: intro (blurred world + card) → drive → church popup
-   → drive → bassinet → gift flip cards → form → thanks.
+   Jonny Fruits DM Kit v2 — finalized flow (Aug 10 designs)
+   Screen 01 intro → Screen 02 drive → Screen 3 house popup
+   → drive → Screen 4 bassinet popup → Screens 5/6 gift cards
+   → form → thanks → free drive.
    ========================================================= */
 
 const el = (id) => document.getElementById(id);
@@ -10,22 +10,12 @@ const stage = el("stage");
 const scrollCue = el("scrollCue");
 const car = el("car");
 
-/* small celebratory pulse when the wedding card closes
-   (flat couple-in-car sprite still to come from Kharisel — the solo
-   sprite drives the whole way until then) */
-function wifeJoinsCar() {
-  gsap.fromTo(car, { scale: 1 }, { scale: 1.06, yoyo: true, repeat: 1, duration: 0.22 });
-}
-
-/* ---------- world geometry ----------
-   The world is Kharisel's Main Board frame: 4628 design-px wide at
-   1080 design-px == viewport height. */
+/* ---------- world geometry (Screen 02 frame: 4628 x 1080) ---------- */
 const FRAME_W = 4628, FRAME_H = 1080;
 const worldWidth = () => FRAME_W * (window.innerHeight / FRAME_H);
 const travel = () => Math.max(0, worldWidth() - window.innerWidth);
 
 function sizeScrollDriver() {
-  // vertical scroll distance == horizontal travel distance
   el("scrollDriver").style.height = window.innerHeight + travel() + "px";
 }
 sizeScrollDriver();
@@ -33,26 +23,27 @@ window.addEventListener("resize", sizeScrollDriver);
 
 /* ---------- parallax ---------- */
 const layers = document.querySelectorAll(".layer");
+let lastX = 0;
 
 function render() {
-  const x = window.scrollY; // 1px scrolled = 1px of world travel
+  const x = window.scrollY;
   layers.forEach((layer) => {
     layer.style.transform = `translateX(${-x * parseFloat(layer.dataset.speed)}px)`;
   });
-  // car bobs while moving
   const moving = Math.abs(x - lastX) > 0.5;
   gsap.to(car, { y: moving ? -4 : 0, duration: 0.3, overwrite: "auto" });
   lastX = x;
   armMilestones();
   if (x > 40) scrollCue.classList.add("hidden");
 }
-let lastX = 0;
 window.addEventListener("scroll", render, { passive: true });
 
-/* ---------- milestones arm when the car reaches them ---------- */
+/* ---------- milestones arm (sparkles) when the car pulls up ---------- */
 const milestones = [
-  { id: "msChurch", popup: "weddingPopup", seen: false },
-  { id: "msBassinet", popup: "giftPopup", seen: false },
+  { id: "msHouse", img: "assets/popup-date.png", caption: "The first step of a beautiful journey together.",
+    alt: "Jonny and his wife at their first dinner date, surrounded by flowers" },
+  { id: "msBassinet", img: "assets/popup-carriage.png", caption: "The greatest chapter yet",
+    alt: "A vintage baby carriage beside a wrapped gift and envelope" },
 ];
 
 function armMilestones() {
@@ -60,85 +51,106 @@ function armMilestones() {
     const node = el(m.id);
     const rect = node.getBoundingClientRect();
     const carRect = car.getBoundingClientRect();
-    // armed while the landmark sits AHEAD of the car (car pulls up beside
-    // it, not on top of it) — dx is landmark-center minus car-center
     const dx = rect.left + rect.width / 2 - (carRect.left + carRect.width / 2);
     const near = dx > window.innerWidth * 0.02 && dx < window.innerWidth * 0.45;
     node.classList.toggle("armed", near);
   });
 }
 
-/* ---------- popups on blurred backdrops ---------- */
-function openPopup(id) {
-  stage.classList.add("blurred");
-  el(id).classList.add("open");
-  gsap.from("#" + id + " .popup-card", { y: 40, opacity: 0, scale: 0.92, duration: 0.45, ease: "back.out(1.4)" });
+/* ---------- Screens 3/4: spotlight popups ---------- */
+const msPopup = el("msPopup");
+let bassinetSeen = false;
+
+function openMilestone(m) {
+  const node = el(m.id);
+  const r = node.getBoundingClientRect();
+  msPopup.style.setProperty("--spot-x", r.left + r.width / 2 + "px");
+  msPopup.style.setProperty("--spot-y", r.top + r.height / 2 + "px");
+  el("msCardImg").src = m.img;
+  el("msCardImg").alt = m.alt;
+  el("msCaption").textContent = m.caption;
+  msPopup.classList.add("open");
+  gsap.from("#msCard", { x: -60, opacity: 0, duration: 0.5, ease: "back.out(1.3)" });
 }
-function closePopup(id) {
-  el(id).classList.remove("open");
-  if (!document.querySelector(".popup-overlay.open")) stage.classList.remove("blurred");
-}
 
-let wifeAboard = false;
-document.querySelectorAll("[data-close]").forEach((btn) =>
-  btn.addEventListener("click", () => {
-    closePopup(btn.dataset.close);
-    // closing the wedding card is the moment she hops in
-    if (btn.dataset.close === "weddingPopup" && !wifeAboard) {
-      wifeAboard = true;
-      wifeJoinsCar();
-    }
-  }));
-
-el("msChurch").addEventListener("click", () => openPopup("weddingPopup"));
-el("msBassinet").addEventListener("click", () => openPopup("giftPopup"));
-
-/* ---------- intro ---------- */
-stage.classList.add("blurred");
-el("intro").classList.add("open");
-el("startBtn").addEventListener("click", () => {
-  closePopup("intro");
-  window.scrollTo(0, 0);
+milestones.forEach((m) => {
+  el(m.id).addEventListener("click", (e) => {
+    e.stopPropagation();
+    openMilestone(m);
+    if (m.id === "msBassinet") bassinetSeen = true;
+  });
 });
 
-/* ---------- gift selection (flip → choose → form) ---------- */
+/* clicking anywhere dismisses the milestone popup (wordless, per design);
+   dismissing the bassinet popup leads into the gift screen */
+msPopup.addEventListener("click", () => {
+  msPopup.classList.remove("open");
+  if (bassinetSeen && !giftChosen) {
+    setTimeout(() => openGiftScreen(), 250);
+  } else {
+    gsap.fromTo(car, { scale: 1 }, { scale: 1.05, yoyo: true, repeat: 1, duration: 0.2 });
+  }
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && msPopup.classList.contains("open")) msPopup.click();
+});
+
+/* ---------- Screen 01: intro ---------- */
+el("intro").classList.add("open");
+el("startBtn").addEventListener("click", () => {
+  el("intro").classList.remove("open");
+  window.scrollTo(0, 0);
+  render();
+});
+
+/* ---------- Screens 5/6: gift cards ---------- */
+const giftScreen = el("giftScreen");
 let chosenGift = null;
+let giftChosen = false;
+
+function openGiftScreen() {
+  giftScreen.classList.add("open");
+  gsap.from(".gift-card", { y: 60, opacity: 0, stagger: 0.12, duration: 0.5, ease: "back.out(1.3)" });
+}
 
 function resetGiftSelection() {
   chosenGift = null;
-  document.querySelectorAll(".gift-flip").forEach((c) =>
+  document.querySelectorAll(".gift-card").forEach((c) =>
     c.classList.remove("chosen", "disabled", "flipped"));
 }
 
-document.querySelectorAll(".gift-flip").forEach((card) => {
+document.querySelectorAll(".gift-card").forEach((card) => {
   const flip = () => {
     if (chosenGift || card.classList.contains("disabled")) return;
     card.classList.toggle("flipped");
   };
-  card.addEventListener("click", flip);
+  card.querySelector(".gift-inner").addEventListener("click", flip);
   card.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flip(); }
   });
-  card.querySelector(".gf-select").addEventListener("click", (e) => {
+  card.querySelector(".gift-choose").addEventListener("click", (e) => {
     e.stopPropagation();
     if (chosenGift) return;
     chosenGift = card.dataset.gift;
+    giftChosen = true;
     card.classList.add("chosen");
-    document.querySelectorAll(".gift-flip").forEach((o) => {
+    document.querySelectorAll(".gift-card").forEach((o) => {
       if (o !== card) o.classList.add("disabled");
     });
     setTimeout(() => {
-      closePopup("giftPopup");
+      giftScreen.classList.remove("open");
       el("chosenGiftLabel").textContent = chosenGift;
-      openPopup("formPopup");
-    }, 550);
+      el("formScreen").classList.add("open");
+      gsap.from(".form-card", { y: 40, opacity: 0, duration: 0.5, ease: "back.out(1.3)" });
+    }, 600);
   });
 });
 
 el("changeGiftBtn").addEventListener("click", () => {
-  closePopup("formPopup");
+  el("formScreen").classList.remove("open");
+  giftChosen = false;
   resetGiftSelection();
-  openPopup("giftPopup");
+  openGiftScreen();
 });
 
 /* ---------- form ---------- */
@@ -154,9 +166,17 @@ el("claimForm").addEventListener("submit", (e) => {
     return;
   }
   const payload = { gift: chosenGift, name, phone, address, submittedAt: new Date().toISOString() };
-  // TODO(backend): same Apps Script notifier as v1 (pending the one-time
-  // authorization click); wire the fetch here once it's live.
+  // TODO(backend): Apps Script notifier is deployed; wire the fetch here
+  // once the one-time authorization is granted.
   console.log("CLAIM SUBMISSION (v2 stub):", payload);
-  closePopup("formPopup");
-  openPopup("thanksPopup");
+  el("formScreen").classList.remove("open");
+  el("thanksScreen").classList.add("open");
 });
+
+document.querySelectorAll("[data-close]").forEach((btn) =>
+  btn.addEventListener("click", () => el(btn.dataset.close).classList.remove("open")));
+
+/* always start at the top of the drive */
+if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+window.scrollTo(0, 0);
+render();
