@@ -21,50 +21,86 @@ function sizeScrollDriver() {
 sizeScrollDriver();
 window.addEventListener("resize", sizeScrollDriver);
 
-/* ---------- spinning wheels ----------
-   The wheels are baked into the sprite, so we lift each wheel out as a
-   circular crop of the SAME pixels and rotate it in place — seamless.
-   Fractions of the sprite (center x, center y, radius), tuned to the art. */
+/* ---------- car sprite + spinning wheels ----------
+   The driving-pose render has a speckled near-white backdrop: flood-fill
+   from the borders to clear it (interior whites like the windshield
+   survive). The wheels are then lifted out of the SAME processed pixels
+   as circular crops and rotated in place — seamless. */
+const CAR_SRC = "assets/jonny-car-drive.png";
+const CAR_ASPECT = 2156 / 2694; // sprite h/w
 const WHEELS = [
-  { id: "wheelRear",  cx: 0.212, cy: 0.712, r: 0.088 },
-  { id: "wheelFront", cx: 0.769, cy: 0.712, r: 0.088 },
+  { id: "wheelRear",  cx: 0.212, cy: 0.652, r: 0.060 },
+  { id: "wheelFront", cx: 0.767, cy: 0.652, r: 0.060 },
 ];
 let wheelRadiusPx = 0; // on-screen radius, for rotation math
 
-function buildWheels() {
+function loadCar() {
   const img = new Image();
   img.onload = () => {
-    WHEELS.forEach((w) => {
-      const size = Math.round(2 * w.r * img.width);
-      const canvas = el(w.id);
-      canvas.width = size;
-      canvas.height = size;
+    const w = img.width, h = img.height;
+    const off = document.createElement("canvas");
+    off.width = w; off.height = h;
+    const octx = off.getContext("2d");
+    octx.drawImage(img, 0, 0);
+    const data = octx.getImageData(0, 0, w, h);
+    const px = data.data;
+    const bgLike = (i) => {
+      const r = px[i], g = px[i + 1], b = px[i + 2];
+      return Math.min(r, g, b) > 222 && Math.max(r, g, b) - Math.min(r, g, b) < 20;
+    };
+    const visited = new Uint8Array(w * h);
+    const queue = [];
+    for (let x = 0; x < w; x++) queue.push(x, x + (h - 1) * w);
+    for (let y = 0; y < h; y++) queue.push(y * w, y * w + w - 1);
+    while (queue.length) {
+      const p = queue.pop();
+      if (visited[p]) continue;
+      visited[p] = 1;
+      if (!bgLike(p * 4)) continue;
+      px[p * 4 + 3] = 0;
+      const x = p % w, y = (p / w) | 0;
+      if (x > 0) queue.push(p - 1);
+      if (x < w - 1) queue.push(p + 1);
+      if (y > 0) queue.push(p - w);
+      if (y < h - 1) queue.push(p + w);
+    }
+    octx.putImageData(data, 0, 0);
+
+    const carCanvas = el("carCanvas");
+    carCanvas.width = w; carCanvas.height = h;
+    carCanvas.getContext("2d").drawImage(off, 0, 0);
+
+    WHEELS.forEach((wl) => {
+      const size = Math.round(2 * wl.r * w);
+      const canvas = el(wl.id);
+      canvas.width = size; canvas.height = size;
       const ctx = canvas.getContext("2d");
       ctx.beginPath();
       ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
       ctx.clip();
-      ctx.drawImage(img,
-        w.cx * img.width - size / 2, w.cy * img.height - size / 2, size, size,
+      ctx.drawImage(off,
+        wl.cx * w - size / 2, wl.cy * h - size / 2, size, size,
         0, 0, size, size);
-      placeWheel(w);
+      placeWheel(wl);
     });
   };
-  img.src = "assets/jonny-car.png";
+  img.src = CAR_SRC;
 }
 
 function placeWheel(w) {
   const carW = car.offsetWidth;
-  const d = 2 * w.r * carW; // sprite is square, so fractions map 1:1
+  const carH = carW * CAR_ASPECT;
+  const d = 2 * w.r * carW;
   const canvas = el(w.id);
   canvas.style.width = d + "px";
   canvas.style.height = d + "px";
   canvas.style.left = w.cx * carW - d / 2 + "px";
-  canvas.style.top = w.cy * carW - d / 2 + "px";
+  canvas.style.top = w.cy * carH - d / 2 + "px";
   wheelRadiusPx = d / 2;
 }
 
 window.addEventListener("resize", () => WHEELS.forEach(placeWheel));
-buildWheels();
+loadCar();
 
 function spinWheels(x) {
   if (!wheelRadiusPx) return;
@@ -79,19 +115,45 @@ function spinWheels(x) {
 const layers = document.querySelectorAll(".layer");
 let lastX = 0;
 
+/* ---------- the car can't drive past a milestone until it's been seen ----------
+   Gate limits are computed analytically from the layer geometry (stale
+   DOM rects let fast scroll jumps leap the wall). Landmark centers in vh,
+   from the plane offsets + hitbox fractions in styles.css:
+   house  (mid plane, speed 0.7): -5vh  + 36.55% of 450.8vh = 159.8vh
+   bassinet (fg plane, speed 1.0): -24.3vh + 74.8% of 475.6vh = 331.4vh */
+const GATE_DX = 0.18; // stop with the landmark this far ahead (of vw)
+const seen = { msHouse: false, msBassinet: false };
+
+function gateLimit() {
+  const vh = window.innerHeight / 100, vw = window.innerWidth / 100;
+  const carCenter = 25 * vw + 23 * vh; // car left 25vw + half of 46vh width
+  if (!seen.msHouse) return (159.8 * vh - carCenter - GATE_DX * 100 * vw) / 0.7;
+  if (!seen.msBassinet) return (331.4 * vh - carCenter - GATE_DX * 100 * vw) / 1.0;
+  return Infinity;
+}
+
 function render() {
-  const x = window.scrollY;
+  let x = window.scrollY;
+  const limit = gateLimit();
+  if (x > limit) {
+    x = Math.max(0, limit);
+    window.scrollTo(0, x); // hard wall until the milestone is clicked
+  }
   layers.forEach((layer) => {
     layer.style.transform = `translateX(${-x * parseFloat(layer.dataset.speed)}px)`;
   });
-  const moving = Math.abs(x - lastX) > 0.5;
-  gsap.to(car, { y: moving ? -4 : 0, duration: 0.3, overwrite: "auto" });
   spinWheels(x);
   lastX = x;
   armMilestones();
   if (x > 40) scrollCue.classList.add("hidden");
 }
 window.addEventListener("scroll", render, { passive: true });
+
+/* ---------- scroll lock while any card/overlay is up ---------- */
+function lockScroll(on) {
+  document.documentElement.style.overflow = on ? "hidden" : "";
+  document.body.style.overflow = on ? "hidden" : "";
+}
 
 /* ---------- milestones arm (sparkles) when the car pulls up ---------- */
 const milestones = [
@@ -125,6 +187,7 @@ function openMilestone(m) {
   el("msCardImg").alt = m.alt;
   el("msCaption").textContent = m.caption;
   msPopup.classList.add("open");
+  lockScroll(true); // the car stays put until the card is dismissed
   gsap.from("#msCard", { x: -60, opacity: 0, duration: 0.5, ease: "back.out(1.3)" });
 }
 
@@ -132,6 +195,7 @@ milestones.forEach((m) => {
   el(m.id).addEventListener("click", (e) => {
     e.stopPropagation();
     openMilestone(m);
+    seen[m.id] = true; // the gate ahead of this landmark opens
     if (m.id === "msBassinet") bassinetSeen = true;
   });
 });
@@ -140,6 +204,7 @@ milestones.forEach((m) => {
    dismissing the bassinet popup leads into the gift screen */
 msPopup.addEventListener("click", () => {
   msPopup.classList.remove("open");
+  lockScroll(false);
   if (bassinetSeen && !giftChosen) {
     setTimeout(() => openGiftScreen(), 250);
   } else {
@@ -152,8 +217,10 @@ document.addEventListener("keydown", (e) => {
 
 /* ---------- Screen 01: intro ---------- */
 el("intro").classList.add("open");
+lockScroll(true);
 el("startBtn").addEventListener("click", () => {
   el("intro").classList.remove("open");
+  lockScroll(false);
   window.scrollTo(0, 0);
   render();
 });
@@ -165,6 +232,7 @@ let giftChosen = false;
 
 function openGiftScreen() {
   giftScreen.classList.add("open");
+  lockScroll(true);
   gsap.from(".gift-card", { y: 60, opacity: 0, stagger: 0.12, duration: 0.5, ease: "back.out(1.3)" });
 }
 
@@ -229,7 +297,10 @@ el("claimForm").addEventListener("submit", (e) => {
 });
 
 document.querySelectorAll("[data-close]").forEach((btn) =>
-  btn.addEventListener("click", () => el(btn.dataset.close).classList.remove("open")));
+  btn.addEventListener("click", () => {
+    el(btn.dataset.close).classList.remove("open");
+    if (!document.querySelector(".overlay.open")) lockScroll(false);
+  }));
 
 /* always start at the top of the drive */
 if ("scrollRestoration" in history) history.scrollRestoration = "manual";
