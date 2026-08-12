@@ -49,7 +49,7 @@ let freeExplore = false;
 
 /* ---------- pawn: dedicated exports from the Aug 4 handoff ---------- */
 function loadPawn() {
-  gsap.set([el("pawnJohnny"), el("pawnCouple")], { xPercent: -50 });
+  gsap.set([el("pawnJonny"), el("pawnCouple")], { xPercent: -50 });
 }
 
 /* ---------- pawn movement along the track ---------- */
@@ -132,11 +132,11 @@ function walkPawnTo(t, onDone) {
   });
 }
 
-// wife appears beside Johnny after the first milestone
+// wife appears beside Jonny after the first milestone
 function wifeJoins(onDone) {
   const couple = el("pawnCouple");
   gsap.timeline({ onComplete: onDone })
-    .to(el("pawnJohnny"), { opacity: 0, duration: 0.35 }, 0.1)
+    .to(el("pawnJonny"), { opacity: 0, duration: 0.35 }, 0.1)
     .fromTo(couple, { opacity: 0, y: -18 }, { opacity: 1, y: 0, duration: 0.45, ease: "back.out(2)" }, 0)
     .to(el("pawnWrap"), { scale: 1.08, yoyo: true, repeat: 1, duration: 0.18 }, 0.1);
 }
@@ -158,7 +158,7 @@ function startExperience() {
 
   board.style.visibility = "visible";
   window.scrollTo(0, 0); // the journey starts at the top of the board
-  positionPawn(0); // Johnny waits at the start of the track
+  positionPawn(0); // Jonny waits at the start of the track
 
   // fit the entire board inside the viewport for the overview shot
   const fit = Math.min((window.innerHeight * 0.94) / board.offsetHeight, 1);
@@ -257,7 +257,7 @@ function drawCard() {
   }
 
   // 3. every card flies onto its board slot, then the pawn advances:
-  //    card 1 — Johnny walks there alone and his wife joins him at the slot;
+  //    card 1 — Jonny walks there alone and his wife joins him at the slot;
   //    card 3 (golden) — the couple walks to it, then we zoom through the card
   function flyToSlot() {
     const slot = el(`slot-${drawn}`);
@@ -449,7 +449,7 @@ function submitClaim(e) {
 
   const payload = {
     gift: chosenGift,
-    name: "Johnny Fruits", // the gift ships to Johnny by definition
+    name: "Jonny Fruits", // the gift ships to Jonny by definition
     phone,
     address,
     submittedAt: new Date().toISOString(),

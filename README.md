@@ -1,6 +1,6 @@
 # Jonny Fruits Baby DM Kit — Interactive Landing Page
 
-Personalized gift experience for Johnny (Salesforce contact; first baby boy due August 2026).
+Personalized gift experience for Jonny (Salesforce contact; first baby boy due August 2026).
 Doubles as a Pixel Dreams capabilities showcase. Target launch: **Aug 3, 2026**.
 
 Source material: Drive folder `2026-06 Jonny Fruits Baby DM Kit`
@@ -12,7 +12,7 @@ Source material: Drive folder `2026-06 Jonny Fruits Baby DM Kit`
    Card floats/swooshes down onto the first square of the board.
 2. **Game board = Carlos's "game board empty" export** (Aug 4 handoff), a 3-screen
    vertical scroll at 1920x1080 design size. An invisible SVG path traces the painted
-   track and drives the pawn. Johnny's pawn (dedicated export) waits alone above the
+   track and drives the pawn. Jonny's pawn (dedicated export) waits alone above the
    first photo patch. Click deck → shuffle → card reveal → polaroid pins onto its
    black patch → pawn walks the painted track to the spot before the NEXT card
    (after card 1 his wife joins him, animated, before they walk on). The page

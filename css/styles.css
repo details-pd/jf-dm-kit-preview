@@ -215,7 +215,7 @@ body {
 /* clickable once filled (free-explore mode) */
 .slot.filled .slot-frame { cursor: pointer; }
 
-/* pawn (Johnny, later the couple) — positioned along the track by JS */
+/* pawn (Jonny, later the couple) — positioned along the track by JS */
 .pawn-wrap {
   position: absolute;
   left: 15%;
