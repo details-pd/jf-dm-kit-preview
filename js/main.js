@@ -145,43 +145,56 @@ window.addEventListener("resize", () => {
   if (board.style.visibility === "visible") positionPawn(pawnT);
 });
 
-/* ---------- intro → board ---------- */
+/* ---------- intro: unbox → board overview → zoom into play ----------
+   The lid flies off the game box, the yellow fades to reveal the WHOLE
+   board scaled down (establishing view, per Sarah's note), and after a
+   beat the camera zooms into the top of the board where Jonny waits. */
 function startExperience() {
   if (busy) return;
   busy = true;
 
   const introCard = el("introCard");
-  const slot0 = el("slot-0").querySelector(".slot-frame");
-  const target = slot0.getBoundingClientRect();
-  const from = introCard.getBoundingClientRect();
+  const deckArea = document.querySelector(".deck-area");
 
   board.style.visibility = "visible";
   window.scrollTo(0, 0); // the journey starts at the top of the board
   positionPawn(0); // Johnny waits at the start of the track
 
-  const tl = gsap.timeline({
+  // fit the entire board inside the viewport for the overview shot
+  const fit = Math.min((window.innerHeight * 0.94) / board.offsetHeight, 1);
+  gsap.set(board, { scale: fit, transformOrigin: "50% 0%", opacity: 0 });
+  gsap.set(deckArea, { opacity: 0 });
+
+  gsap.timeline({
     onComplete: () => {
-      intro.style.display = "none";
+      gsap.set(board, { clearProps: "transform,opacity" });
+      positionPawn(0); // re-anchor at full scale
       busy = false;
       promptDeck();
     },
-  });
-
-  // card floats/swooshes down onto the first square of the board
-  tl.to(intro, { backgroundColor: "rgba(242,178,27,0)", duration: 0.8 }, 0)
+  })
+    // a little anticipation wiggle, then the lid flies off
+    .to(introCard, { rotation: -2, duration: 0.09, repeat: 3, yoyo: true }, 0)
     .to(introCard, {
-      x: target.left + target.width / 2 - (from.left + from.width / 2),
-      y: target.top + target.height / 2 - (from.top + from.height / 2),
-      rotation: 720,
-      scale: target.width / from.width,
-      opacity: 0.9,
-      duration: 1.6,
-      ease: "power2.inOut",
-    }, 0)
-    .to(introCard, { opacity: 0, duration: 0.25 }, "-=0.2")
-    .from(".board-header, .deck-area, .pawn-wrap, .slot", {
-      opacity: 0, y: 24, stagger: 0.08, duration: 0.5,
-    }, "-=0.9");
+      y: -window.innerHeight * 1.2,
+      x: -window.innerWidth * 0.12,
+      rotation: -16,
+      rotationX: 28,
+      scale: 1.08,
+      duration: 0.9,
+      ease: "power2.in",
+    }, 0.4)
+    // the base drops away as the box empties
+    .to(".box-base", { y: 60, opacity: 0, duration: 0.5, ease: "power1.in" }, 0.6)
+    // yellow fades out; the miniature board fades in underneath
+    .to(intro, { backgroundColor: "rgba(242,178,27,0)", duration: 0.7 }, 0.7)
+    .to(board, { opacity: 1, duration: 0.6 }, 0.8)
+    .add(() => { intro.style.display = "none"; }, 1.5)
+    // hold the establishing view of the full board…
+    .to({}, { duration: 1.3 })
+    // …then zoom into the top of the board where the journey begins
+    .to(board, { scale: 1, duration: 1.7, ease: "power2.inOut" })
+    .to(deckArea, { opacity: 1, duration: 0.5 }, "-=0.4");
 }
 
 /* ---------- deck prompts: shake + golden highlight pulse ---------- */
