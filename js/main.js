@@ -428,29 +428,60 @@ function setupGiftCards() {
   });
 }
 
-/* ---------- form submit ---------- */
+/* ---------- form submit ----------
+   Posts the claim to the "Jonny Fruits Claim Notifier" Apps Script web
+   app, which emails the team. On failure the form stays open so the one
+   submission that matters can be retried. */
+const CLAIM_ENDPOINT =
+  "https://script.google.com/macros/s/AKfycbzlAoT1Me_uVJ1aaQ0XFCjO7a_a5NtdeF32CpvJkaZ5uyEaiXJ-YZTEsBQRbJ5E4X4-WQ/exec";
+
 function submitClaim(e) {
   e.preventDefault();
   formError.textContent = "";
 
-  const name = el("fName").value.trim();
   const phone = el("fPhone").value.trim();
   const address = el("fAddress").value.trim();
 
-  if (!name || !phone || !address) {
-    formError.textContent = "Please fill in your name, phone number, and address.";
+  if (!phone || !address) {
+    formError.textContent = "Please fill in your phone number and address.";
     return;
   }
 
-  const payload = { gift: chosenGift, name, phone, address, submittedAt: new Date().toISOString() };
+  const payload = {
+    gift: chosenGift,
+    name: "Johnny Fruits", // the gift ships to Johnny by definition
+    phone,
+    address,
+    submittedAt: new Date().toISOString(),
+  };
 
-  // TODO(backend): destination not decided yet (likely SendGrid email to the PD
-  // team, or an Apps Script endpoint writing to a Sheet). Wire this up once
-  // confirmed. For the MVP the payload is only logged locally.
-  console.log("CLAIM SUBMISSION (stub):", payload);
+  const submitBtn = claimForm.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  const originalLabel = submitBtn.textContent;
+  submitBtn.textContent = "Sending…";
 
-  formOverlay.style.display = "none";
-  showThanks();
+  fetch(CLAIM_ENDPOINT, {
+    method: "POST",
+    // text/plain keeps this a "simple" request (no CORS preflight),
+    // which is what Apps Script web apps expect
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(payload),
+  })
+    .then((r) => r.json())
+    .then((j) => {
+      if (!j.ok) throw new Error(j.error || "notifier returned not-ok");
+      formOverlay.style.display = "none";
+      showThanks();
+    })
+    .catch((err) => {
+      console.error("claim submission failed:", err);
+      formError.textContent =
+        "Hmm, that didn’t send — mind trying once more?";
+    })
+    .finally(() => {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalLabel;
+    });
 }
 
 /* ---------- thanks → free explore ---------- */
