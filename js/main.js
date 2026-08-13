@@ -125,12 +125,18 @@ function vh() { return stage.clientHeight; }
 // scale that fits the whole board in the stage (overview shot)
 function fitScale() { return Math.min(vw() / BW, vh() / BH) * 0.94; }
 
-// play scale: a milestone card should read clearly on any screen —
-// ~42% of viewport height, but never wider than 70% of the width
+// play scale: a milestone card should read clearly on any screen, but
+// the board may never render wider than boardMaxWidth × the viewport —
+// on portrait phones that cap wins and keeps the view zoomed out
 function playScale() {
+  const c = KIT.camera;
   const cardH = KIT.milestones[0].slot.h * BH;
   const cardW = KIT.milestones[0].slot.w * BW;
-  return Math.min((0.42 * vh()) / cardH, (0.70 * vw()) / cardW);
+  return Math.min(
+    (c.cardHeight * vh()) / cardH,
+    (c.cardMaxWidth * vw()) / cardW,
+    (c.boardMaxWidth * vw()) / BW
+  );
 }
 
 function clampCam(x, y, s) {

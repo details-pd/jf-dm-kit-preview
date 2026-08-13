@@ -137,6 +137,15 @@ const KIT = {
       "https://script.google.com/macros/s/AKfycbzlAoT1Me_uVJ1aaQ0XFCjO7a_a5NtdeF32CpvJkaZ5uyEaiXJ-YZTEsBQRbJ5E4X4-WQ/exec",
   },
 
+  // play-zoom framing: a milestone card aims for ~cardHeight of the
+  // viewport, but the board never renders wider than boardMaxWidth ×
+  // viewport width — that cap is what keeps phones zoomed OUT
+  camera: {
+    cardHeight: 0.42,
+    cardMaxWidth: 0.70,
+    boardMaxWidth: 1.6,
+  },
+
   // animation pacing (Sarah asked for snappier transitions, Aug 13)
   timing: {
     flipDur: 0.45,        // card flip in the reveal popup
