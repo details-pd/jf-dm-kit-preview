@@ -141,7 +141,7 @@ const KIT = {
   // viewport, but the board never renders wider than boardMaxWidth ×
   // viewport width — that cap is what keeps phones zoomed OUT
   camera: {
-    cardHeight: 0.32,
+    cardHeight: 0.26,
     cardMaxWidth: 0.70,
     boardMaxWidth: 1.6,
   },
