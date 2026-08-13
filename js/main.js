@@ -56,7 +56,8 @@ function buildBoard() {
     img.style.width = KIT.pawnWidthFrac * BW + "px";
     img.style.zIndex = 10 - i;
     board.appendChild(img);
-    gsap.set(img, { xPercent: -50, yPercent: -92 }); // bottom-center anchor
+    // anchor low on the band so the heads read as standing ON the track
+    gsap.set(img, { xPercent: -50, yPercent: -75 });
   });
 }
 const pawnEls = () => KIT.pawns.map((_, i) => el(`pawn-${i}`));
@@ -154,47 +155,74 @@ function cameraTo(target, dur, ease, onDone) {
 }
 
 /* ================= pawns ================= */
-let pawnT = 0;
+let pawnT = null; // null = still waiting at startPos, off the track
 let partnerJoined = false; // second head pops in during the intro zoom
 
-function positionPawns(t) {
-  pawnT = t;
-  const p = TRACK.pointAt(t);
+const startPoint = () => ({
+  x: KIT.board.startPos[0] * BW,
+  y: KIT.board.startPos[1] * BH,
+});
+const currentPawnPoint = () => (pawnT === null ? startPoint() : TRACK.pointAt(pawnT));
+
+function renderPawnsAt(p) {
   const w = KIT.pawnWidthFrac * BW;
-  // alone: dead-center on the line; couple: side by side, slight overlap
+  // alone: dead-center; couple: side by side, slight overlap
   const offs = partnerJoined ? [-0.34, 0.34] : [0, 0];
   pawnEls().forEach((e, i) => {
     gsap.set(e, { left: p.x + offs[i] * w + "px", top: p.y + "px" });
   });
 }
+function positionPawns() { renderPawnsAt(currentPawnPoint()); }
+
+function softFollow(p) { // camera tracks the walking pawns, same zoom
+  const c = camTargetFor(p.x, p.y, cam.s);
+  cam.x += (c.x - cam.x) * 0.12;
+  cam.y += (c.y - cam.y) * 0.12;
+  applyCam();
+}
 
 function walkPawnsTo(t, follow, onDone) {
+  const bob = gsap.to(pawnEls(), { rotation: 4, duration: 0.18, repeat: -1, yoyo: true });
+  const settle = () => {
+    bob.kill();
+    gsap.to(pawnEls(), { rotation: 0, duration: 0.15 });
+    if (follow) {
+      const p = TRACK.pointAt(t);
+      cameraTo(camTargetFor(p.x, p.y, cam.s), 0.45, "power1.out", onDone);
+    } else if (onDone) onDone();
+  };
+
+  if (pawnT === null) {
+    // first move: step off the waiting spot straight onto the track
+    const from = startPoint();
+    const to = TRACK.pointAt(t);
+    const state = { f: 0 };
+    gsap.to(state, {
+      f: 1, duration: 1.0, ease: "power1.inOut",
+      onUpdate: () => {
+        const p = { x: from.x + (to.x - from.x) * state.f,
+                    y: from.y + (to.y - from.y) * state.f };
+        renderPawnsAt(p);
+        if (follow) softFollow(p);
+      },
+      onComplete: () => { pawnT = t; settle(); },
+    });
+    return;
+  }
+
   const dist = Math.abs(t - pawnT);
   const dur = Math.max(0.7, dist / KIT.timing.walkSpeed);
-  const bob = gsap.to(pawnEls(), { rotation: 4, duration: 0.18, repeat: -1, yoyo: true });
   const state = { t: pawnT };
   gsap.to(state, {
     t,
     duration: dur,
     ease: "power1.inOut",
     onUpdate: () => {
-      positionPawns(state.t);
-      if (follow) { // camera tracks the walking pawns, same zoom
-        const p = TRACK.pointAt(state.t);
-        const c = camTargetFor(p.x, p.y, cam.s);
-        cam.x += (c.x - cam.x) * 0.12; // soft follow
-        cam.y += (c.y - cam.y) * 0.12;
-        applyCam();
-      }
+      pawnT = state.t;
+      positionPawns();
+      if (follow) softFollow(TRACK.pointAt(state.t));
     },
-    onComplete: () => {
-      bob.kill();
-      gsap.to(pawnEls(), { rotation: 0, duration: 0.15 });
-      if (follow) {
-        const p = TRACK.pointAt(t);
-        cameraTo(camTargetFor(p.x, p.y, cam.s), 0.45, "power1.out", onDone);
-      } else if (onDone) onDone();
-    },
+    onComplete: settle,
   });
 }
 
@@ -237,12 +265,12 @@ function startExperience() {
   const fs = fitScale();
   Object.assign(cam, { s: fs, ...clampCam((vw() - BW * fs) / 2, (vh() - BH * fs) / 2, fs) });
   applyCam();
-  positionPawns(0);
+  positionPawns(); // waiting at startPos, above the first card
   gsap.set(el("pawn-1"), { opacity: 0, scale: 0.4 }); // pawn 2 joins later
   gsap.set(board, { opacity: 0 });
   gsap.set(deckArea, { opacity: 0 });
 
-  const start = TRACK.pointAt(0);
+  const start = startPoint();
   const play = camTargetFor(start.x, start.y, playScale());
 
   gsap.timeline({
@@ -268,7 +296,7 @@ function startExperience() {
       duration: KIT.timing.introZoomDur, ease: "power2.inOut",
       onUpdate: applyCam,
     }, "zoom")
-    .add(() => { partnerJoined = true; positionPawns(pawnT); },
+    .add(() => { partnerJoined = true; positionPawns(); },
       `zoom+=${KIT.timing.introZoomDur * 0.5}`)
     .to(el("pawn-1"), {
       opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2.2)",
@@ -571,8 +599,8 @@ stage.addEventListener("wheel", (e) => {
 /* ================= resize: keep current framing sane ================= */
 window.addEventListener("resize", () => {
   if (stage.style.visibility !== "visible") return;
-  positionPawns(pawnT);
-  const p = TRACK.pointAt(pawnT);
+  positionPawns();
+  const p = currentPawnPoint();
   const s = freeExplore ? cam.s : (drawn === 0 && busy ? cam.s : playScale());
   Object.assign(cam, camTargetFor(p.x, p.y, s));
   applyCam();
@@ -611,6 +639,14 @@ deck.addEventListener("keydown", (e) => {
   if (e.key === "Enter" || e.key === " ") { e.preventDefault(); drawCard(); }
 });
 revealClose.addEventListener("click", closeReveal);
+// ESC works like the X (only once the X itself is active)
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" &&
+      getComputedStyle(reveal).display !== "none" &&
+      revealClose.style.pointerEvents === "auto") {
+    closeReveal();
+  }
+});
 el("changeGiftBtn").addEventListener("click", changeGift);
 claimForm.addEventListener("submit", submitClaim);
 el("exploreBtn").addEventListener("click", startFreeExplore);

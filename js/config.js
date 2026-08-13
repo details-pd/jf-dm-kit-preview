@@ -47,13 +47,17 @@ const KIT = {
     image: "assets/v3/board-play.jpg",
     // native design space; all fractions map onto this (w, h)
     size: [1938, 3258],
-    // pawn track — traced over the painted track, start → finish
+    // where the pawns wait before the first draw (above milestone 1's card)
+    startPos: [0.225, 0.168],
+    // pawn track — traced along the painted band's centerline, start → finish
+    // (verify against the art with tools/ + trackviz when the board changes)
     track: [
-      [0.185, 0.315], [0.30, 0.345], [0.44, 0.360], [0.56, 0.378],
-      [0.67, 0.430], [0.80, 0.470], [0.83, 0.530], [0.72, 0.575],
-      [0.58, 0.590], [0.44, 0.600], [0.31, 0.615], [0.17, 0.655],
-      [0.13, 0.720], [0.17, 0.780], [0.30, 0.805], [0.45, 0.825],
-      [0.63, 0.845], [0.74, 0.870], [0.78, 0.930],
+      [0.205, 0.332], [0.293, 0.364], [0.383, 0.397], [0.473, 0.419],
+      [0.560, 0.432], [0.660, 0.450], [0.755, 0.480], [0.833, 0.530],
+      [0.805, 0.585], [0.720, 0.607], [0.600, 0.622], [0.483, 0.638],
+      [0.370, 0.646], [0.260, 0.652], [0.148, 0.669], [0.107, 0.715],
+      [0.126, 0.762], [0.215, 0.810], [0.335, 0.831], [0.445, 0.846],
+      [0.550, 0.853], [0.650, 0.858], [0.735, 0.882], [0.775, 0.935],
     ],
   },
 
