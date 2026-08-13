@@ -141,15 +141,16 @@ const KIT = {
   // viewport, but the board never renders wider than boardMaxWidth ×
   // viewport width — that cap is what keeps phones zoomed OUT
   camera: {
-    cardHeight: 0.26,
+    cardHeight: 0.29,
     cardMaxWidth: 0.70,
     boardMaxWidth: 1.6,
   },
 
   // animation pacing (Sarah asked for snappier transitions, Aug 13)
   timing: {
-    flipDur: 0.45,        // card flip in the reveal popup
-    introZoomDur: 1.1,    // overview → play zoom
+    flipDur: 0.45,        // card flip in the revisit popup
+    flyDur: 0.6,          // deck → slot flight of a drawn card
+    introZoomDur: 0.7,    // overview → play zoom
     overviewHold: 0.8,    // beat on the establishing shot
     walkSpeed: 0.10,      // path fraction per second the pawns walk
   },

@@ -327,78 +327,43 @@ function promptDeck() {
       onComplete: () => gsap.set(deck, { filter: "none" }) });
 }
 
-/* ================= draw: shuffle → reveal popup → land → walk ================= */
+/* ================= draw: card flies from the deck, lies flat on its slot =================
+   No shuffle, no popup, no X (Waheed, Aug 13 PM): clicking the deck sends
+   the card straight to its board position, flipping face-up mid-flight. */
 function drawCard() {
   if (busy || freeExplore || drawn >= KIT.milestones.length) return;
   busy = true;
   deckBubble.textContent = "";
 
-  const cards = deck.querySelectorAll(".deck-card");
-  const shuffle = gsap.timeline({ onComplete: () => showReveal(drawn, false) });
-  cards.forEach((c, i) => {
-    shuffle.to(c, {
-      x: gsap.utils.random(-26, 26),
-      y: gsap.utils.random(-20, 8),
-      rotation: gsap.utils.random(-16, 16),
-      duration: 0.13,
-    }, i * 0.04)
-    .to(c, { x: 0, y: 0, rotation: 0, duration: 0.14 }, ">");
-  });
-  shuffle.repeat(1);
-}
-
-// the reveal popup: dimmed backdrop, flip, then an X in the corner.
-// In revisit mode (free explore) the X just closes.
-function showReveal(index, revisit) {
-  const m = KIT.milestones[index];
-  el("revealImg").src = m.face;
-  el("revealImg").alt = m.alt;
-  gsap.set(revealInner, { rotationY: revisit ? 180 : 0 });
-  gsap.set(revealClose, { opacity: 0, scale: 0.4, pointerEvents: "none" });
-  reveal.style.display = "grid";
-  gsap.set(reveal, { opacity: 1 });
-  reveal.dataset.index = index;
-  reveal.dataset.revisit = revisit ? "1" : "";
-
-  const tl = gsap.timeline({
-    onComplete: () => {
-      gsap.to(revealClose, { opacity: 1, scale: 1, duration: 0.25, ease: "back.out(2)" });
-      gsap.set(revealClose, { pointerEvents: "auto" });
-      busy = false; // waiting on the X
-    },
-  });
-  if (revisit) {
-    tl.from(revealCard, { scale: 0.5, opacity: 0, duration: 0.3, ease: "back.out(1.5)" });
-  } else {
-    tl.from(revealCard, { scale: 0.2, y: 220, rotation: -10, duration: 0.4, ease: "back.out(1.4)" })
-      .to(revealInner, { rotationY: 180, duration: KIT.timing.flipDur, ease: "power2.inOut" });
-  }
-}
-
-// X clicked: back to the board. On a fresh draw the card lands on its
-// slot and the pawns walk to it (the ONLY time the camera moves — Sarah).
-function closeReveal() {
-  if (busy) return;
-  const revisit = reveal.dataset.revisit === "1";
-  if (revisit) {
-    gsap.to(reveal, { opacity: 0, duration: 0.25, onComplete: () => {
-      reveal.style.display = "none";
-    }});
-    return;
-  }
-  busy = true;
-  const index = Number(reveal.dataset.index);
+  const index = drawn;
   const m = KIT.milestones[index];
   const slotEl = el(`slot-${index}`);
 
-  // fly the popup card toward the slot's on-screen position
+  el("revealImg").src = m.face;
+  el("revealImg").alt = m.alt;
+  gsap.set(revealClose, { opacity: 0, scale: 0.4, pointerEvents: "none" });
+  gsap.set(revealInner, { rotationY: 0 }); // back showing
+  reveal.classList.add("fly-mode"); // transparent, click-through
+  reveal.style.display = "grid";
+  gsap.set(reveal, { opacity: 1 });
+
+  const card = revealCard.getBoundingClientRect(); // centered, natural size
+  const from = deck.getBoundingClientRect();
   const target = slotEl.getBoundingClientRect();
-  const from = revealCard.getBoundingClientRect();
+  const d = KIT.timing.flyDur;
+
+  gsap.set(revealCard, {
+    x: from.left + from.width / 2 - (card.left + card.width / 2),
+    y: from.top + from.height / 2 - (card.top + card.height / 2),
+    scale: from.width / card.width,
+    rotation: 0,
+  });
   gsap.timeline({
     onComplete: () => {
       slotEl.classList.add("filled");
       reveal.style.display = "none";
-      gsap.set(revealCard, { x: 0, y: 0, scale: 1, opacity: 1, rotation: 0 });
+      reveal.classList.remove("fly-mode");
+      gsap.set(revealCard, { x: 0, y: 0, scale: 1, rotation: 0 });
       drawn += 1;
 
       walkPawnsTo(milestoneStandT(index), true, () => {
@@ -411,18 +376,40 @@ function closeReveal() {
       });
     },
   })
-    .to(reveal, { backgroundColor: "rgba(5,7,22,0)", duration: 0.4 }, 0)
-    .to(revealClose, { opacity: 0, duration: 0.15 }, 0)
     .to(revealCard, {
-      x: target.left + target.width / 2 - (from.left + from.width / 2),
-      y: target.top + target.height / 2 - (from.top + from.height / 2),
-      scale: target.width / from.width,
+      x: target.left + target.width / 2 - (card.left + card.width / 2),
+      y: target.top + target.height / 2 - (card.top + card.height / 2),
+      scale: target.width / card.width,
       rotation: m.slot.angle,
-      duration: 0.65,
+      duration: d,
       ease: "power2.inOut",
     }, 0)
-    .to(revealCard, { opacity: 0, duration: 0.12 }, "-=0.1")
-    .set(reveal, { backgroundColor: "" });
+    .to(revealInner, { rotationY: 180, duration: d * 0.8, ease: "power2.inOut" }, 0);
+}
+
+// revisit popup (free explore only): dimmed backdrop, X / ESC to close
+function showReveal(index) {
+  const m = KIT.milestones[index];
+  el("revealImg").src = m.face;
+  el("revealImg").alt = m.alt;
+  gsap.set(revealInner, { rotationY: 180 });
+  gsap.set(revealClose, { opacity: 0, scale: 0.4, pointerEvents: "none" });
+  reveal.style.display = "grid";
+  gsap.set(reveal, { opacity: 1 });
+
+  gsap.timeline({
+    onComplete: () => {
+      gsap.to(revealClose, { opacity: 1, scale: 1, duration: 0.25, ease: "back.out(2)" });
+      gsap.set(revealClose, { pointerEvents: "auto" });
+    },
+  })
+    .from(revealCard, { scale: 0.5, opacity: 0, duration: 0.3, ease: "back.out(1.5)" });
+}
+
+function closeReveal() {
+  gsap.to(reveal, { opacity: 0, duration: 0.25, onComplete: () => {
+    reveal.style.display = "none";
+  }});
 }
 
 /* ================= gift selection ================= */
@@ -568,7 +555,7 @@ function startFreeExplore() {
   document.querySelectorAll(".slot.filled").forEach((slot) => {
     slot.addEventListener("click", () => {
       if (dragMoved) return;
-      showReveal(Number(slot.dataset.index), true);
+      showReveal(Number(slot.dataset.index));
     });
   });
   // ease out to a view of the whole journey
@@ -577,10 +564,13 @@ function startFreeExplore() {
   cameraTo(camTargetFor(p.x, p.y, fs), 1.2, "power2.inOut");
 }
 
-/* --- free-explore pan: drag / touch-drag / wheel, clamped --- */
+/* --- manual pan: drag / touch-drag / wheel, clamped ---
+   Active during play too (between animations), not just free explore —
+   the camera still auto-follows on each draw. */
+const canPan = () => freeExplore || !busy;
 let dragging = false, dragMoved = false, lastX = 0, lastY = 0;
 stage.addEventListener("pointerdown", (e) => {
-  if (!freeExplore) return;
+  if (!canPan()) return;
   dragging = true; dragMoved = false;
   lastX = e.clientX; lastY = e.clientY;
 });
@@ -595,7 +585,7 @@ window.addEventListener("pointermove", (e) => {
 });
 window.addEventListener("pointerup", () => { dragging = false; });
 stage.addEventListener("wheel", (e) => {
-  if (!freeExplore) return;
+  if (!canPan()) return;
   e.preventDefault();
   const c = clampCam(cam.x - e.deltaX, cam.y - e.deltaY, cam.s);
   cam.x = c.x; cam.y = c.y;

@@ -206,6 +206,11 @@ h1, h2, h3, h4, .btn {
   place-items: center;
   background: var(--dim); /* dimmed backdrop, board visible behind */
 }
+/* draw flight: the same card element, but no dim and click-through */
+.reveal-overlay.fly-mode {
+  background: transparent;
+  pointer-events: none;
+}
 .reveal-card {
   position: relative;
   width: var(--card-w);
