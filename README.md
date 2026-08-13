@@ -1,57 +1,59 @@
 # Jonny Fruits Baby DM Kit — Interactive Landing Page
 
-Personalized gift experience for Jonny (Salesforce contact; first baby boy due August 2026).
-Doubles as a Pixel Dreams capabilities showcase. Target launch: **Aug 3, 2026**.
+Personalized gift experience for Jonny Fruits (Salesforce contact; baby boy **Henry**,
+2026). Doubles as a Pixel Dreams capabilities showcase — and as a **reusable engine**
+for future life-event gifts (first reuse: Courtney's baby shower).
 
-Source material: Drive folder `2026-06 Jonny Fruits Baby DM Kit`
-(Creative Deck script + storyboards, milestone illustrations, Game Board .ai).
+Design source: Kharisel's `PD-Jonny-Fruits-Baby-DM-Kit-Design-Assets.ai`
+(Drive folder `PD Jonny Fruits Baby DM kit design assets`), Aug 13 handoff.
 
-## Experience flow (from Creative Deck script + storyboards)
+## Experience flow (v3, per Aug 13 sync)
 
-1. **Intro card** — "Every great journey has many little steps." CTA *Let's celebrate*.
-   Card floats/swooshes down onto the first square of the board.
-2. **Game board = Carlos's "game board empty" export** (Aug 4 handoff), a 3-screen
-   vertical scroll at 1920x1080 design size. An invisible SVG path traces the painted
-   track and drives the pawn. Jonny's pawn (dedicated export) waits alone above the
-   first photo patch. Click deck → shuffle → card reveal → polaroid pins onto its
-   black patch → pawn walks the painted track to the spot before the NEXT card
-   (after card 1 his wife joins him, animated, before they walk on). The page
-   auto-scrolls to follow, and the deck glows/shakes to cue the next draw. 3 draws:
-   - Meeting / first date — *"First step of a beautiful journey together."*
-   - Wedding — *"A promise to build a life together."*
-   - Baby (golden card, bolder outline, slower reveal) — *"Your greatest chapter yet."*
-3. **After the 3rd card** the couple walks the final stretch, then the golden card
-   zooms "like a window" into the **gift selection page**: 3 cards side by side
-   (per Carlos's Aug 4 sketch) — flip any card to peek at contents; choosing one
-   disables the others, then the page transitions to a separate name / phone /
-   address form (gift + form intentionally split, per Aug 4 decision).
-4. **Thank you** — *"Your gift is on its way…"*. Card returns to the board; user can
-   freely revisit the milestones.
+1. **Intro game box** — "Every great journey has many little steps." CTA *Let's
+   celebrate* unboxes the lid → establishing view of the whole board → camera zooms
+   to the track start. The first head-pawn waits alone; the second pops in during
+   the zoom, before the first draw. *(Beginning-screen redesign pending from
+   Kharisel: bulked-up copy, dim background.)*
+2. **Board play** — four milestones in draw order: The Team Founding (2018),
+   Contract Talks Begin (2021), Signing Day (2022), Henry: Franchise Cornerstone
+   (2026). Board slots show white **year cards**; click the deck → shuffle → card
+   reveal popup (dimmed backdrop, **X** to close) → the card lands on its slot →
+   the heads walk the track there and the **camera follows**. The screen never
+   moves on its own — only deck interaction advances it (Sarah's requirement).
+3. **After the 4th card** → gift selection (flip cards; choosing one disables the
+   rest) → phone/address form → thank-you → free explore (drag/scroll the board,
+   click placed cards to revisit).
 
-Gift options (Creative Deck): Once Upon a Bedtime / The Days You'll Treasure /
-A Moment Together.
+The claim posts to the "Jonny Fruits Claim Notifier" Apps Script web app
+(`apps-script-backups/jonny-fruits-claim-notifier`), which emails the team.
 
-Easter eggs (subtle, must not dictate theme): PD three-pixel logo, Salesforce-style
-cloud, basketball in Pacers navy/gold (no trademarked logo).
+## Re-skinning for a new recipient / event
+
+Everything recipient-specific lives in **`js/config.js`** (`KIT`): name, copy,
+milestone faces + year cards + slot transforms, head-pawn images, track waypoints,
+gifts, notifier endpoint, pacing. Swap the assets and edit that one file — no
+`main.js` changes.
+
+New board art workflow: get the .ai (PDF-compatible), then use the extraction
+script (see session scratchpad `extract.py`, or regenerate) to export pieces and
+measure slot transforms → drop into `assets/<version>/` + update `KIT.milestones`
+and `KIT.board.track`.
 
 ## Stack
 
-Plain HTML/CSS/JS + GSAP (vendored in `js/vendor/`). No build step — deployable to
-any static host. `noindex,nofollow` set; final hosting/URL TBD.
+Plain HTML/CSS/JS + GSAP (vendored). Camera-driven fixed stage (no page scroll) —
+same behavior on desktop and mobile. No build step; static hosting
+(GitHub Pages: `details-pd.github.io/jf-dm-kit-preview/`). `noindex,nofollow`.
 
 ## Running locally
 
-Any static server, e.g.:
-
     python3 -m http.server 8788
 
-## MVP placeholders / open items
+## Open items
 
 | Item | Status |
 | --- | --- |
-| Board art | SVG track placeholder — awaiting export from `Game Board .ai` (Carlos) |
-| Gift selection design | Placeholder 3-card picker — final design pending |
-| Form destination | **Stubbed** (`submitClaim` in `js/main.js`, TODO) — SendGrid email vs. Sheet undecided |
-| Mobile approach | Basic responsive pass only — full/vertical-track decision pending (Waheed to confirm) |
-| Email piece | Out of scope for this repo so far — owner undecided |
-| Pawn asset | `assets/pawn.png` has magenta bg; chroma-keyed at runtime (replace with transparent PNG when provided) |
+| Beginning screen | Approved unboxing kept; Kharisel's redesigned mockup pending |
+| Gift cards | Gifts are changing; Kharisel's card designs pending (current: emoji fronts + photo backs) |
+| Notifier recipients | details@ only → add Kharisel for testing → Sarah at go-live |
+| v2 | Frozen at `/v2/` — do not touch |

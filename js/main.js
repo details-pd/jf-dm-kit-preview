@@ -1,209 +1,287 @@
 /* =========================================================
-   Jonny Fruits Baby DM Kit — MVP interaction flow
+   Jonny Fruits Baby DM Kit — v3 engine (Aug 13 board)
+   All recipient-specific data comes from js/config.js (KIT).
+
    State machine:
-   intro → board → (deck draw ×3: shuffle → reveal → fly to slot)
-   → golden card zoom → carriage scene → stamp peel → form
-   → thank you → free explore
+   intro (game box) → unbox → board OVERVIEW (pawn 1 alone)
+   → zoom to track start (pawn 2 pops in during the zoom)
+   → [deck click: shuffle → reveal popup (dim + X) → close
+      → card lands on slot → pawns walk there, camera follows] ×N
+   → gift selection → address form → thanks → free explore
+
+   Camera: the board lives inside a fixed, clipped stage and is
+   moved with translate+scale — no page scrolling. This is what
+   makes "screen only moves on deck interaction" enforceable, and
+   it behaves identically on phones.
    ========================================================= */
 
-const MILESTONES = [
-  {
-    img: "assets/milestone-1.png",
-    alt: "Polaroid of Jonny and his wife on their first date",
-    caption: "First step of a beautiful journey together.",
-  },
-  {
-    img: "assets/milestone-2.png",
-    alt: "Polaroid of Jonny and his wife on their wedding day",
-    caption: "A promise to build a life together.",
-  },
-  {
-    img: "assets/milestone-3.png",
-    alt: "Polaroid of a baby carriage with a gift box and envelope",
-    caption: "Your greatest chapter yet.",
-  },
-];
-
 const el = (id) => document.getElementById(id);
+const [BW, BH] = KIT.board.size;
+
+/* ================= build the board from config ================= */
+const stage = el("stage");
+const board = el("board");
+
+function buildBoard() {
+  board.style.width = BW + "px";
+  board.style.height = BH + "px";
+  board.style.backgroundImage = `url("${KIT.board.image}")`;
+
+  KIT.milestones.forEach((m, i) => {
+    const slot = document.createElement("div");
+    slot.className = "slot";
+    slot.id = `slot-${i}`;
+    slot.dataset.index = i;
+    const w = m.slot.w * BW, h = m.slot.h * BH;
+    // 4% oversize so the overlay always covers the baked card art
+    slot.style.width = w * 1.04 + "px";
+    slot.style.height = h * 1.04 + "px";
+    slot.style.left = m.slot.cx * BW - w * 0.52 + "px";
+    slot.style.top = m.slot.cy * BH - h * 0.52 + "px";
+    slot.style.transform = `rotate(${m.slot.angle}deg)`;
+    slot.innerHTML =
+      `<img class="slot-year" src="${m.yearCard}" alt="">` +
+      `<img class="slot-face" src="${m.face}" alt="${m.alt}">`;
+    board.appendChild(slot);
+  });
+
+  // pawns are anchored individually (feet on the track); no shared layout,
+  // so a lone first pawn stands dead-center on the line
+  KIT.pawns.forEach((p, i) => {
+    const img = document.createElement("img");
+    img.id = `pawn-${i}`;
+    img.className = "pawn";
+    img.src = p.img;
+    img.alt = p.alt;
+    img.style.width = KIT.pawnWidthFrac * BW + "px";
+    img.style.zIndex = 10 - i;
+    board.appendChild(img);
+    gsap.set(img, { xPercent: -50, yPercent: -92 }); // bottom-center anchor
+  });
+}
+const pawnEls = () => KIT.pawns.map((_, i) => el(`pawn-${i}`));
+
+/* ================= track: Catmull-Rom through config waypoints ================= */
+/* Sampled to arc-length so pawns walk at constant speed. */
+const TRACK = (() => {
+  const pts = KIT.board.track.map(([x, y]) => [x * BW, y * BH]);
+  const P = (i) => pts[Math.max(0, Math.min(pts.length - 1, i))];
+  const samples = [];
+  const SEGS = 40;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [p0, p1, p2, p3] = [P(i - 1), P(i), P(i + 1), P(i + 2)];
+    for (let s = 0; s < SEGS; s++) {
+      const t = s / SEGS, t2 = t * t, t3 = t2 * t;
+      samples.push([
+        0.5 * (2 * p1[0] + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3),
+        0.5 * (2 * p1[1] + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3),
+      ]);
+    }
+  }
+  samples.push(pts[pts.length - 1]);
+  const cum = [0];
+  for (let i = 1; i < samples.length; i++) {
+    cum.push(cum[i - 1] + Math.hypot(samples[i][0] - samples[i - 1][0], samples[i][1] - samples[i - 1][1]));
+  }
+  const total = cum[cum.length - 1];
+  return {
+    total,
+    pointAt(t) { // t: 0..1 of arc length → board px
+      const target = Math.max(0, Math.min(1, t)) * total;
+      let lo = 0, hi = cum.length - 1;
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (cum[mid] < target) lo = mid + 1; else hi = mid;
+      }
+      if (lo === 0) return { x: samples[0][0], y: samples[0][1] };
+      const f = (target - cum[lo - 1]) / (cum[lo] - cum[lo - 1] || 1);
+      return {
+        x: samples[lo - 1][0] + (samples[lo][0] - samples[lo - 1][0]) * f,
+        y: samples[lo - 1][1] + (samples[lo][1] - samples[lo - 1][1]) * f,
+      };
+    },
+    nearestT(x, y) { // board px → t
+      let best = 0, bestD = Infinity;
+      for (let i = 0; i < samples.length; i++) {
+        const d = (samples[i][0] - x) ** 2 + (samples[i][1] - y) ** 2;
+        if (d < bestD) { bestD = d; best = i; }
+      }
+      return cum[best] / total;
+    },
+  };
+})();
+
+/* ================= camera ================= */
+const cam = { x: 0, y: 0, s: 1 }; // translate px + scale, origin 0 0
+
+function applyCam() {
+  gsap.set(board, { x: cam.x, y: cam.y, scale: cam.s });
+}
+
+function vw() { return stage.clientWidth; }
+function vh() { return stage.clientHeight; }
+
+// scale that fits the whole board in the stage (overview shot)
+function fitScale() { return Math.min(vw() / BW, vh() / BH) * 0.94; }
+
+// play scale: a milestone card should read clearly on any screen —
+// ~42% of viewport height, but never wider than 70% of the width
+function playScale() {
+  const cardH = KIT.milestones[0].slot.h * BH;
+  const cardW = KIT.milestones[0].slot.w * BW;
+  return Math.min((0.42 * vh()) / cardH, (0.70 * vw()) / cardW);
+}
+
+function clampCam(x, y, s) {
+  // never show a gap on a side the board can cover
+  const bw = BW * s, bh = BH * s;
+  const nx = bw <= vw() ? (vw() - bw) / 2 : Math.min(0, Math.max(vw() - bw, x));
+  const ny = bh <= vh() ? (vh() - bh) / 2 : Math.min(0, Math.max(vh() - bh, y));
+  return { x: nx, y: ny };
+}
+
+// camera target that frames board point (bx,by) at viewport center
+function camTargetFor(bx, by, s) {
+  return { s, ...clampCam(vw() / 2 - bx * s, vh() / 2 - by * s, s) };
+}
+
+function cameraTo(target, dur, ease, onDone) {
+  gsap.to(cam, {
+    x: target.x, y: target.y, s: target.s,
+    duration: dur, ease: ease || "power2.inOut",
+    onUpdate: applyCam, onComplete: onDone,
+  });
+}
+
+/* ================= pawns ================= */
+let pawnT = 0;
+let partnerJoined = false; // second head pops in during the intro zoom
+
+function positionPawns(t) {
+  pawnT = t;
+  const p = TRACK.pointAt(t);
+  const w = KIT.pawnWidthFrac * BW;
+  // alone: dead-center on the line; couple: side by side, slight overlap
+  const offs = partnerJoined ? [-0.34, 0.34] : [0, 0];
+  pawnEls().forEach((e, i) => {
+    gsap.set(e, { left: p.x + offs[i] * w + "px", top: p.y + "px" });
+  });
+}
+
+function walkPawnsTo(t, follow, onDone) {
+  const dist = Math.abs(t - pawnT);
+  const dur = Math.max(0.7, dist / KIT.timing.walkSpeed);
+  const bob = gsap.to(pawnEls(), { rotation: 4, duration: 0.18, repeat: -1, yoyo: true });
+  const state = { t: pawnT };
+  gsap.to(state, {
+    t,
+    duration: dur,
+    ease: "power1.inOut",
+    onUpdate: () => {
+      positionPawns(state.t);
+      if (follow) { // camera tracks the walking pawns, same zoom
+        const p = TRACK.pointAt(state.t);
+        const c = camTargetFor(p.x, p.y, cam.s);
+        cam.x += (c.x - cam.x) * 0.12; // soft follow
+        cam.y += (c.y - cam.y) * 0.12;
+        applyCam();
+      }
+    },
+    onComplete: () => {
+      bob.kill();
+      gsap.to(pawnEls(), { rotation: 0, duration: 0.15 });
+      if (follow) {
+        const p = TRACK.pointAt(t);
+        cameraTo(camTargetFor(p.x, p.y, cam.s), 0.45, "power1.out", onDone);
+      } else if (onDone) onDone();
+    },
+  });
+}
+
+// where the pawns stand for milestone i: on the track, stepped back far
+// enough that the heads don't cover the placed card
+function milestoneStandT(i) {
+  const m = KIT.milestones[i];
+  const t = TRACK.nearestT(m.slot.cx * BW, m.slot.cy * BH);
+  const stepBack = (m.slot.w * BW * 0.9) / TRACK.total; // ~a card-width of arc
+  return Math.max(0, t - stepBack);
+}
+
+/* ================= game state ================= */
+let drawn = 0;
+let busy = false;
+let freeExplore = false;
+let chosenGift = null;
 
 const intro = el("intro");
-const board = el("board");
-const deck = el("deck");
-const deckBubble = el("deckBubble");
 const reveal = el("reveal");
 const revealCard = el("revealCard");
 const revealInner = el("revealInner");
-const revealImg = el("revealImg");
-const revealCaption = el("revealCaption");
-const scene = el("scene");
-const stampHotspot = el("stampHotspot");
+const revealClose = el("revealClose");
+const deck = el("deck");
+const deckArea = el("deckArea");
+const deckBubble = el("deckBubble");
 const giftSelect = el("giftSelect");
 const formOverlay = el("form");
 const claimForm = el("claimForm");
 const formError = el("formError");
 const thanks = el("thanks");
 
-let drawn = 0;          // how many milestone cards have been drawn
-let busy = false;       // animation lock
-let freeExplore = false;
-
-/* ---------- pawn: dedicated exports from the Aug 4 handoff ---------- */
-function loadPawn() {
-  gsap.set([el("pawnJonny"), el("pawnCouple")], { xPercent: -50 });
-}
-
-/* ---------- pawn movement along the track ---------- */
-const track = () => document.getElementById("trackPath");
-let pawnT = 0; // current position along the path, 0..1
-
-// convert a point at fraction t of the path into page coordinates
-function pathPointAt(t) {
-  const p = track();
-  const pt = p.getPointAtLength(t * p.getTotalLength());
-  return new DOMPoint(pt.x, pt.y).matrixTransform(p.getScreenCTM());
-}
-
-function positionPawn(t) {
-  pawnT = t;
-  const pw = el("pawnWrap");
-  const boardRect = board.getBoundingClientRect();
-  const pos = pathPointAt(t);
-  const w = pw.offsetWidth, h = pw.offsetHeight;
-  // anchor the pawn's feet (bottom-center) on the track, but never let his
-  // head poke above the board edge (happens on phones, where the pawn's
-  // minimum pixel size is large relative to the scaled-down board)
-  gsap.set(pw, {
-    left: pos.x - boardRect.left - w / 2 + "px",
-    top: Math.max(4, pos.y - boardRect.top - h * 0.92) + "px",
-  });
-}
-
-// path fraction just before each slot ("the spot before the card"),
-// computed from live layout
-function slotWaypoints() {
-  const p = track();
-  const centers = [0, 1, 2].map((i) => {
-    const r = el(`slot-${i}`).querySelector(".slot-frame").getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-  });
-  return centers.map((c) => {
-    let best = 0, bestD = Infinity;
-    for (let s = 0; s <= 300; s++) {
-      const t = s / 300;
-      const pos = pathPointAt(t);
-      const d = (pos.x - c.x) ** 2 + (pos.y - c.y) ** 2;
-      if (d < bestD) { bestD = d; best = t; }
-    }
-    return Math.max(0.02, best - 0.07);
-  });
-}
-
-// keep the walking pawn in view on the 3-screen board
-function scrollToPathPoint(t, onDone) {
-  const pos = pathPointAt(t);
-  const targetY = Math.max(0, window.scrollY + pos.y - window.innerHeight * 0.55);
-  const state = { y: window.scrollY };
-  gsap.to(state, {
-    y: targetY,
-    duration: Math.min(1.2, Math.abs(targetY - state.y) / 900 + 0.3),
-    ease: "power1.inOut",
-    onUpdate: () => window.scrollTo(0, state.y),
-    onComplete: onDone,
-  });
-}
-
-function walkPawnTo(t, onDone) {
-  const pw = el("pawnWrap");
-  const state = { t: pawnT };
-  const dist = Math.abs(t - pawnT);
-  const dur = Math.max(0.8, dist * 4);
-  // waddle while walking
-  const bob = gsap.to(pw, { rotation: 4, duration: 0.18, repeat: -1, yoyo: true });
-  gsap.to(state, {
-    t,
-    duration: dur,
-    ease: "power1.inOut",
-    onUpdate: () => positionPawn(state.t),
-    onComplete: () => {
-      bob.kill();
-      gsap.to(pw, { rotation: 0, duration: 0.15 });
-      if (onDone) onDone();
-    },
-  });
-}
-
-// wife appears beside Jonny after the first milestone
-function wifeJoins(onDone) {
-  const couple = el("pawnCouple");
-  gsap.timeline({ onComplete: onDone })
-    .to(el("pawnJonny"), { opacity: 0, duration: 0.35 }, 0.1)
-    .fromTo(couple, { opacity: 0, y: -18 }, { opacity: 1, y: 0, duration: 0.45, ease: "back.out(2)" }, 0)
-    .to(el("pawnWrap"), { scale: 1.08, yoyo: true, repeat: 1, duration: 0.18 }, 0.1);
-}
-
-window.addEventListener("resize", () => {
-  if (board.style.visibility === "visible") positionPawn(pawnT);
-});
-
-/* ---------- intro: unbox → board overview → zoom into play ----------
-   The lid flies off the game box, the yellow fades to reveal the WHOLE
-   board scaled down (establishing view, per Sarah's note), and after a
-   beat the camera zooms into the top of the board where Jonny waits. */
+/* ================= intro: unbox → overview → zoom in ================= */
 function startExperience() {
   if (busy) return;
   busy = true;
 
-  const introCard = el("introCard");
-  const deckArea = document.querySelector(".deck-area");
-
-  board.style.visibility = "visible";
-  window.scrollTo(0, 0); // the journey starts at the top of the board
-  positionPawn(0); // Jonny waits at the start of the track
-
-  // fit the entire board inside the viewport for the overview shot
-  const fit = Math.min((window.innerHeight * 0.94) / board.offsetHeight, 1);
-  gsap.set(board, { scale: fit, transformOrigin: "50% 0%", opacity: 0 });
+  stage.style.visibility = "visible";
+  // overview: whole board centered, pawn 1 waiting at the start
+  const fs = fitScale();
+  Object.assign(cam, { s: fs, ...clampCam((vw() - BW * fs) / 2, (vh() - BH * fs) / 2, fs) });
+  applyCam();
+  positionPawns(0);
+  gsap.set(el("pawn-1"), { opacity: 0, scale: 0.4 }); // pawn 2 joins later
+  gsap.set(board, { opacity: 0 });
   gsap.set(deckArea, { opacity: 0 });
 
+  const start = TRACK.pointAt(0);
+  const play = camTargetFor(start.x, start.y, playScale());
+
   gsap.timeline({
-    onComplete: () => {
-      gsap.set(board, { clearProps: "transform,opacity" });
-      positionPawn(0); // re-anchor at full scale
-      busy = false;
-      promptDeck();
-    },
+    onComplete: () => { busy = false; promptDeck(); },
   })
-    // a little anticipation wiggle, then the lid flies off
-    .to(introCard, { rotation: -2, duration: 0.09, repeat: 3, yoyo: true }, 0)
-    .to(introCard, {
-      y: -window.innerHeight * 1.2,
-      x: -window.innerWidth * 0.12,
-      rotation: -16,
-      rotationX: 28,
-      scale: 1.08,
-      duration: 0.9,
-      ease: "power2.in",
-    }, 0.4)
-    // the base drops away as the box empties
-    .to(".box-base", { y: 60, opacity: 0, duration: 0.5, ease: "power1.in" }, 0.6)
-    // yellow fades out; the miniature board fades in underneath
-    .to(intro, { backgroundColor: "rgba(242,178,27,0)", duration: 0.7 }, 0.7)
-    .to(board, { opacity: 1, duration: 0.6 }, 0.8)
-    .add(() => { intro.style.display = "none"; }, 1.5)
-    // hold the establishing view of the full board…
-    .to({}, { duration: 1.3 })
-    // …then zoom into the top of the board where the journey begins
-    .to(board, { scale: 1, duration: 1.7, ease: "power2.inOut" })
-    .to(deckArea, { opacity: 1, duration: 0.5 }, "-=0.4");
+    // anticipation wiggle, lid flies off
+    .to("#introCard", { rotation: -2, duration: 0.08, repeat: 3, yoyo: true }, 0)
+    .to("#introCard", {
+      y: -vh() * 1.2, x: -vw() * 0.12,
+      rotation: -16, rotationX: 28, scale: 1.08,
+      duration: 0.75, ease: "power2.in",
+    }, 0.32)
+    .to(".box-base", { y: 60, opacity: 0, duration: 0.4, ease: "power1.in" }, 0.5)
+    .to(intro, { backgroundColor: "rgba(242,178,27,0)", duration: 0.55 }, 0.55)
+    .to(board, { opacity: 1, duration: 0.5 }, 0.6)
+    .add(() => { intro.style.display = "none"; }, 1.2)
+    // beat on the establishing view…
+    .to({}, { duration: KIT.timing.overviewHold })
+    // …zoom to the start of the track; partner pops in mid-zoom
+    .add("zoom")
+    .to(cam, {
+      x: play.x, y: play.y, s: play.s,
+      duration: KIT.timing.introZoomDur, ease: "power2.inOut",
+      onUpdate: applyCam,
+    }, "zoom")
+    .add(() => { partnerJoined = true; positionPawns(pawnT); },
+      `zoom+=${KIT.timing.introZoomDur * 0.5}`)
+    .to(el("pawn-1"), {
+      opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2.2)",
+    }, `zoom+=${KIT.timing.introZoomDur * 0.55}`)
+    .to(pawnEls(), { scale: 1.06, yoyo: true, repeat: 1, duration: 0.15 }, ">-0.1")
+    .to(deckArea, { opacity: 1, duration: 0.4 }, "-=0.3");
 }
 
-/* ---------- deck prompts: shake + golden highlight pulse ---------- */
+/* ================= deck prompt ================= */
 function promptDeck() {
-  if (drawn >= MILESTONES.length) return;
-  deckBubble.textContent =
-    drawn === 0 ? "Click the deck to shuffle!" :
-    drawn === 1 ? "One memory placed — draw again!" :
-                  "One last card…";
+  if (drawn >= KIT.milestones.length) return;
+  const prompts = KIT.copy.deckPrompts;
+  deckBubble.textContent = prompts[Math.min(drawn, prompts.length - 1)];
   gsap.fromTo(deck, { rotation: -3 }, {
     rotation: 3, duration: 0.12, repeat: 7, yoyo: true,
     onComplete: () => gsap.set(deck, { rotation: 0 }),
@@ -215,170 +293,137 @@ function promptDeck() {
       onComplete: () => gsap.set(deck, { filter: "none" }) });
 }
 
-/* ---------- draw sequence ---------- */
+/* ================= draw: shuffle → reveal popup → land → walk ================= */
 function drawCard() {
-  if (busy || freeExplore || drawn >= MILESTONES.length) return;
+  if (busy || freeExplore || drawn >= KIT.milestones.length) return;
   busy = true;
+  deckBubble.textContent = "";
 
-  const m = MILESTONES[drawn];
-  const isGolden = drawn === 2;
-
-  // 1. shuffle animation on the deck
   const cards = deck.querySelectorAll(".deck-card");
-  const shuffle = gsap.timeline({ onComplete: popCard });
+  const shuffle = gsap.timeline({ onComplete: () => showReveal(drawn, false) });
   cards.forEach((c, i) => {
     shuffle.to(c, {
-      x: gsap.utils.random(-30, 30),
-      y: gsap.utils.random(-24, 10),
-      rotation: gsap.utils.random(-18, 18),
-      duration: 0.16,
-    }, i * 0.05)
-    .to(c, { x: 0, y: 0, rotation: 0, duration: 0.18 }, ">");
+      x: gsap.utils.random(-26, 26),
+      y: gsap.utils.random(-20, 8),
+      rotation: gsap.utils.random(-16, 16),
+      duration: 0.13,
+    }, i * 0.04)
+    .to(c, { x: 0, y: 0, rotation: 0, duration: 0.14 }, ">");
   });
   shuffle.repeat(1);
-
-  // 2. card pops to screen and flips to reveal the illustration
-  function popCard() {
-    revealImg.src = m.img;
-    revealImg.alt = m.alt;
-    revealCaption.textContent = m.caption;
-    revealCard.classList.toggle("golden", isGolden);
-    gsap.set(revealInner, { rotationY: 0 });
-    reveal.style.display = "grid";
-
-    const revealDur = isGolden ? 1.6 : 0.7; // golden card = slower reveal
-    const holdTime = isGolden ? 1.6 : 1.1;
-
-    gsap.timeline({ onComplete: () => setTimeout(flyToSlot, holdTime * 1000) })
-      .from(revealCard, {
-        scale: 0.2, y: 240, rotation: -12, duration: 0.55, ease: "back.out(1.4)",
-      })
-      .to(revealInner, { rotationY: 180, duration: revealDur, ease: "power2.inOut" });
-  }
-
-  // 3. every card flies onto its board slot, then the pawn advances:
-  //    card 1 — Jonny walks there alone and his wife joins him at the slot;
-  //    card 3 (golden) — the couple walks to it, then we zoom through the card
-  function flyToSlot() {
-    const slot = el(`slot-${drawn}`);
-    const frame = slot.querySelector(".slot-frame");
-    const target = frame.getBoundingClientRect();
-    const from = revealCard.getBoundingClientRect();
-
-    gsap.timeline({
-      onComplete: () => {
-        placeInSlot(slot, m);
-        reveal.style.display = "none";
-        gsap.set(revealCard, { x: 0, y: 0, scale: 1, opacity: 1 });
-        drawn += 1;
-        // the pawn advances to the spot just BEFORE the next card
-        // (after the 3rd card it walks the final stretch to the last photo)
-        const wp = isGolden ? 1 : slotWaypoints()[drawn];
-        const advance = () => scrollToPathPoint(wp, () => walkPawnTo(wp, () => {
-          if (isGolden) {
-            zoomThroughCard(slot); // straight into gift selection
-          } else {
-            busy = false;
-            promptDeck(); // deck highlight cues the next draw
-          }
-        }));
-        // first milestone placed: his wife joins him (animated) before they walk on
-        if (drawn === 1) wifeJoins(advance); else advance();
-      },
-    })
-      .to(reveal, { backgroundColor: "rgba(32,26,16,0)", duration: 0.5 }, 0)
-      .to(revealCard, {
-        x: target.left + target.width / 2 - (from.left + from.width / 2),
-        y: target.top + target.height / 2 - (from.top + from.height / 2),
-        scale: target.width / from.width,
-        rotation: gsap.utils.random(-6, 6),
-        duration: 0.9,
-        ease: "power2.inOut",
-      }, 0)
-      .to(revealCard, { opacity: 0, duration: 0.15 }, "-=0.1");
-  }
 }
 
-function placeInSlot(slot, m) {
-  const frame = slot.querySelector(".slot-frame");
-  frame.innerHTML = "";
-  const img = document.createElement("img");
-  img.src = m.img;
-  img.alt = m.alt;
-  frame.appendChild(img);
-  slot.classList.add("filled");
-}
-
-/* ---------- golden card: zoom "through the window" into the scene ---------- */
-function zoomThroughCard(slot) {
-  const frameRect = slot.querySelector(".slot-frame").getBoundingClientRect();
-  gsap.set(revealInner, { rotationY: 180 }); // front face showing
+// the reveal popup: dimmed backdrop, flip, then an X in the corner.
+// In revisit mode (free explore) the X just closes.
+function showReveal(index, revisit) {
+  const m = KIT.milestones[index];
+  el("revealImg").src = m.face;
+  el("revealImg").alt = m.alt;
+  gsap.set(revealInner, { rotationY: revisit ? 180 : 0 });
+  gsap.set(revealClose, { opacity: 0, scale: 0.4, pointerEvents: "none" });
   reveal.style.display = "grid";
-  gsap.set(reveal, { opacity: 1, backgroundColor: "rgba(32,26,16,0)" });
-  const from = revealCard.getBoundingClientRect();
-  gsap.set(revealCard, {
-    x: frameRect.left + frameRect.width / 2 - (from.left + from.width / 2),
-    y: frameRect.top + frameRect.height / 2 - (from.top + from.height / 2),
-    scale: frameRect.width / from.width,
+  gsap.set(reveal, { opacity: 1 });
+  reveal.dataset.index = index;
+  reveal.dataset.revisit = revisit ? "1" : "";
+
+  const tl = gsap.timeline({
+    onComplete: () => {
+      gsap.to(revealClose, { opacity: 1, scale: 1, duration: 0.25, ease: "back.out(2)" });
+      gsap.set(revealClose, { pointerEvents: "auto" });
+      busy = false; // waiting on the X
+    },
   });
-  gsap.timeline({ onComplete: showGiftSelect })
-    .to(reveal, { backgroundColor: "rgba(32,26,16,0.55)", duration: 0.4 }, 0)
-    .to(revealCard, { x: 0, y: 0, scale: 1, duration: 0.5, ease: "power2.out" }, 0)
-    .to(revealCard, { scale: 6, duration: 1.0, ease: "power3.in" }, 0.65)
-    .to(reveal, { opacity: 0, duration: 0.35 }, "-=0.35");
+  if (revisit) {
+    tl.from(revealCard, { scale: 0.5, opacity: 0, duration: 0.3, ease: "back.out(1.5)" });
+  } else {
+    tl.from(revealCard, { scale: 0.2, y: 220, rotation: -10, duration: 0.4, ease: "back.out(1.4)" })
+      .to(revealInner, { rotationY: 180, duration: KIT.timing.flipDur, ease: "power2.inOut" });
+  }
 }
 
-/* ---------- gift selection page (follows the 3rd milestone directly) ---------- */
+// X clicked: back to the board. On a fresh draw the card lands on its
+// slot and the pawns walk to it (the ONLY time the camera moves — Sarah).
+function closeReveal() {
+  if (busy) return;
+  const revisit = reveal.dataset.revisit === "1";
+  if (revisit) {
+    gsap.to(reveal, { opacity: 0, duration: 0.25, onComplete: () => {
+      reveal.style.display = "none";
+    }});
+    return;
+  }
+  busy = true;
+  const index = Number(reveal.dataset.index);
+  const m = KIT.milestones[index];
+  const slotEl = el(`slot-${index}`);
+
+  // fly the popup card toward the slot's on-screen position
+  const target = slotEl.getBoundingClientRect();
+  const from = revealCard.getBoundingClientRect();
+  gsap.timeline({
+    onComplete: () => {
+      slotEl.classList.add("filled");
+      reveal.style.display = "none";
+      gsap.set(revealCard, { x: 0, y: 0, scale: 1, opacity: 1, rotation: 0 });
+      drawn += 1;
+
+      walkPawnsTo(milestoneStandT(index), true, () => {
+        if (drawn >= KIT.milestones.length) {
+          gsap.delayedCall(0.7, showGiftSelect);
+        } else {
+          busy = false;
+          promptDeck();
+        }
+      });
+    },
+  })
+    .to(reveal, { backgroundColor: "rgba(5,7,22,0)", duration: 0.4 }, 0)
+    .to(revealClose, { opacity: 0, duration: 0.15 }, 0)
+    .to(revealCard, {
+      x: target.left + target.width / 2 - (from.left + from.width / 2),
+      y: target.top + target.height / 2 - (from.top + from.height / 2),
+      scale: target.width / from.width,
+      rotation: m.slot.angle,
+      duration: 0.65,
+      ease: "power2.inOut",
+    }, 0)
+    .to(revealCard, { opacity: 0, duration: 0.12 }, "-=0.1")
+    .set(reveal, { backgroundColor: "" });
+}
+
+/* ================= gift selection ================= */
+function buildGifts() {
+  const row = el("giftRow");
+  KIT.gifts.forEach((g) => {
+    const card = document.createElement("div");
+    card.className = "gift-flip";
+    card.dataset.gift = g.name;
+    card.tabIndex = 0;
+    card.innerHTML =
+      `<div class="gift-flip-inner">
+        <div class="gf-face gf-front">
+          <span class="gf-emoji">${g.emoji}</span>
+          <h4>${g.name}</h4>
+          <p>${g.tagline}</p>
+          <span class="gf-hint">Flip me</span>
+        </div>
+        <div class="gf-face gf-back">
+          <img class="gf-art" src="${g.art}" alt="${g.alt}">
+          <button class="btn btn-primary gf-select" type="button">Choose this gift</button>
+        </div>
+      </div>`;
+    row.appendChild(card);
+  });
+}
+
 function showGiftSelect() {
-  reveal.style.display = "none";
-  gsap.set(reveal, { opacity: 1, backgroundColor: "rgba(32,26,16,0.55)" });
-  gsap.set(revealCard, { x: 0, y: 0, scale: 1 });
   giftSelect.style.display = "grid";
   gsap.from(".gift-flip", {
-    y: 60, opacity: 0, stagger: 0.12, duration: 0.5, ease: "back.out(1.4)",
+    y: 60, opacity: 0, stagger: 0.1, duration: 0.45, ease: "back.out(1.4)",
     onComplete: () => { busy = false; },
   });
 }
 
-/* ---------- final scene ---------- */
-function enterScene() {
-  reveal.style.display = "none";
-  gsap.set(reveal, { opacity: 1, backgroundColor: "rgba(32,26,16,0.55)" });
-  gsap.set(revealCard, { x: 0, y: 0, scale: 1 });
-  scene.style.display = "grid";
-  busy = false;
-
-  gsap.from(".scene-stage", { scale: 1.25, opacity: 0, duration: 0.9, ease: "power2.out" });
-  gsap.from("#sceneBubble", { y: -16, opacity: 0, delay: 0.7, duration: 0.4 });
-  // pulse the stamp so the click target is discoverable
-  gsap.to("#stamp", { scale: 1.12, repeat: -1, yoyo: true, duration: 0.7, delay: 1.2 });
-}
-
-/* ---------- stamp peel → gift selection (separate from the form) ---------- */
-let chosenGift = null;
-
-function peelStamp() {
-  if (busy) return;
-  busy = true;
-  gsap.killTweensOf("#stamp");
-
-  gsap.timeline({
-    onComplete: () => {
-      scene.style.display = "none";
-      giftSelect.style.display = "grid";
-      gsap.from(".gift-flip", {
-        y: 60, opacity: 0, stagger: 0.12, duration: 0.5, ease: "back.out(1.4)",
-        onComplete: () => { busy = false; },
-      });
-    },
-  })
-    // stamp peels off and zooms into frame
-    .to("#stamp", { rotationX: 25, y: -10, duration: 0.25, ease: "power1.in" })
-    .to("#stamp", { scale: 14, opacity: 0, duration: 0.7, ease: "power3.in" });
-}
-
-/* ---------- gift flip cards: flip to peek, choose one, others go null ---------- */
-// second thoughts welcome — the form links back here
 function resetGiftSelection() {
   chosenGift = null;
   document.querySelectorAll(".gift-flip").forEach((c) => {
@@ -411,45 +456,37 @@ function setupGiftCards() {
       document.querySelectorAll(".gift-flip").forEach((other) => {
         if (other !== card) other.classList.add("disabled");
       });
-      // brief beat on the chosen card, then transition to the form page
       gsap.timeline()
-        .to(card, { scale: 1.05, yoyo: true, repeat: 1, duration: 0.22 })
-        .to(giftSelect, { opacity: 0, duration: 0.4, delay: 0.25 })
+        .to(card, { scale: 1.05, yoyo: true, repeat: 1, duration: 0.2 })
+        .to(giftSelect, { opacity: 0, duration: 0.35, delay: 0.2 })
         .add(() => {
           giftSelect.style.display = "none";
           gsap.set(giftSelect, { opacity: 1 });
           el("chosenGiftLabel").textContent = chosenGift;
           formOverlay.style.display = "grid";
           gsap.from(".form-stamp-frame", {
-            scale: 0.4, rotation: 8, opacity: 0, duration: 0.6, ease: "back.out(1.3)",
+            scale: 0.4, rotation: 8, opacity: 0, duration: 0.5, ease: "back.out(1.3)",
           });
         });
     });
   });
 }
 
-/* ---------- form submit ----------
-   Posts the claim to the "Jonny Fruits Claim Notifier" Apps Script web
-   app, which emails the team. On failure the form stays open so the one
-   submission that matters can be retried. */
-const CLAIM_ENDPOINT =
-  "https://script.google.com/macros/s/AKfycbzlAoT1Me_uVJ1aaQ0XFCjO7a_a5NtdeF32CpvJkaZ5uyEaiXJ-YZTEsBQRbJ5E4X4-WQ/exec";
-
+/* ================= form submit → notifier ================= */
 function submitClaim(e) {
   e.preventDefault();
   formError.textContent = "";
 
   const phone = el("fPhone").value.trim();
   const address = el("fAddress").value.trim();
-
   if (!phone || !address) {
-    formError.textContent = "Please fill in your phone number and address.";
+    formError.textContent = KIT.copy.formMissing;
     return;
   }
 
   const payload = {
     gift: chosenGift,
-    name: "Jonny Fruits", // the gift ships to Jonny by definition
+    name: KIT.recipient.name,
     phone,
     address,
     submittedAt: new Date().toISOString(),
@@ -460,7 +497,7 @@ function submitClaim(e) {
   const originalLabel = submitBtn.textContent;
   submitBtn.textContent = "Sending…";
 
-  fetch(CLAIM_ENDPOINT, {
+  fetch(KIT.notifier.endpoint, {
     method: "POST",
     // text/plain keeps this a "simple" request (no CORS preflight),
     // which is what Apps Script web apps expect
@@ -475,8 +512,7 @@ function submitClaim(e) {
     })
     .catch((err) => {
       console.error("claim submission failed:", err);
-      formError.textContent =
-        "Hmm, that didn’t send — mind trying once more?";
+      formError.textContent = KIT.copy.formFailed;
     })
     .finally(() => {
       submitBtn.disabled = false;
@@ -484,54 +520,97 @@ function submitClaim(e) {
     });
 }
 
-/* ---------- thanks → free explore ---------- */
+/* ================= thanks → free explore ================= */
 function showThanks() {
-  // golden card is already on the board (placed before the zoom transition)
-  drawn = 3;
   thanks.style.display = "grid";
-  gsap.from(".thanks-card", { y: 40, opacity: 0, duration: 0.6, ease: "back.out(1.4)" });
+  gsap.from(".thanks-card", { y: 40, opacity: 0, duration: 0.5, ease: "back.out(1.4)" });
 }
 
 function startFreeExplore() {
   thanks.style.display = "none";
   freeExplore = true;
-  deckBubble.textContent = "Click a memory to revisit it."; // couple already stands at slot 3
+  deckBubble.textContent = KIT.copy.explorePrompt;
 
-  // milestones become clickable to re-view
   document.querySelectorAll(".slot.filled").forEach((slot) => {
     slot.addEventListener("click", () => {
-      const i = Number(slot.dataset.index);
-      const m = MILESTONES[i];
-      revealImg.src = m.img;
-      revealImg.alt = m.alt;
-      revealCaption.textContent = m.caption;
-      revealCard.classList.toggle("golden", i === 2);
-      gsap.set(revealInner, { rotationY: 180 });
-      reveal.style.display = "grid";
-      gsap.from(revealCard, { scale: 0.5, opacity: 0, duration: 0.4, ease: "back.out(1.5)" });
+      if (dragMoved) return;
+      showReveal(Number(slot.dataset.index), true);
     });
   });
-
-  // clicking the backdrop closes the re-view
-  reveal.addEventListener("click", () => {
-    if (freeExplore) reveal.style.display = "none";
-  });
+  // ease out to a view of the whole journey
+  const fs = Math.max(fitScale(), playScale() * 0.55);
+  const p = TRACK.pointAt(1);
+  cameraTo(camTargetFor(p.x, p.y, fs), 1.2, "power2.inOut");
 }
 
-/* ---------- wire up ---------- */
-// always begin at the top of the board (the browser otherwise restores
-// the previous scroll position on reload)
+/* --- free-explore pan: drag / touch-drag / wheel, clamped --- */
+let dragging = false, dragMoved = false, lastX = 0, lastY = 0;
+stage.addEventListener("pointerdown", (e) => {
+  if (!freeExplore) return;
+  dragging = true; dragMoved = false;
+  lastX = e.clientX; lastY = e.clientY;
+});
+window.addEventListener("pointermove", (e) => {
+  if (!dragging) return;
+  const dx = e.clientX - lastX, dy = e.clientY - lastY;
+  if (Math.abs(dx) + Math.abs(dy) > 3) dragMoved = true;
+  lastX = e.clientX; lastY = e.clientY;
+  const c = clampCam(cam.x + dx, cam.y + dy, cam.s);
+  cam.x = c.x; cam.y = c.y;
+  applyCam();
+});
+window.addEventListener("pointerup", () => { dragging = false; });
+stage.addEventListener("wheel", (e) => {
+  if (!freeExplore) return;
+  e.preventDefault();
+  const c = clampCam(cam.x - e.deltaX, cam.y - e.deltaY, cam.s);
+  cam.x = c.x; cam.y = c.y;
+  applyCam();
+}, { passive: false });
+
+/* ================= resize: keep current framing sane ================= */
+window.addEventListener("resize", () => {
+  if (stage.style.visibility !== "visible") return;
+  positionPawns(pawnT);
+  const p = TRACK.pointAt(pawnT);
+  const s = freeExplore ? cam.s : (drawn === 0 && busy ? cam.s : playScale());
+  Object.assign(cam, camTargetFor(p.x, p.y, s));
+  applyCam();
+});
+
+/* ================= copy from config ================= */
+function applyCopy() {
+  document.title = KIT.copy.pageTitle;
+  el("introHeadline").innerHTML = KIT.copy.introHeadline;
+  el("introSub").textContent = KIT.copy.introSub;
+  el("celebrateBtn").textContent = KIT.copy.introCta;
+  el("giftTitle").textContent = KIT.copy.giftTitle;
+  el("giftSub").textContent = KIT.copy.giftSub;
+  el("formTitle").textContent = KIT.copy.formTitle;
+  el("formGiftLead").firstChild.textContent = KIT.copy.formGiftLead + " ";
+  el("changeGiftBtn").textContent = KIT.copy.formChangeCta;
+  el("fPhoneLabel").textContent = KIT.copy.formPhoneLabel;
+  el("fAddressLabel").textContent = KIT.copy.formAddressLabel;
+  el("submitBtn").textContent = KIT.copy.formSubmitCta;
+  el("thanksTitle").textContent = KIT.copy.thanksTitle;
+  el("thanksBody").textContent = KIT.copy.thanksBody;
+  el("exploreBtn").textContent = KIT.copy.thanksCta;
+}
+
+/* ================= wire up ================= */
 if ("scrollRestoration" in history) history.scrollRestoration = "manual";
 window.scrollTo(0, 0);
 
-loadPawn();
+buildBoard();
+buildGifts();
+applyCopy();
 setupGiftCards();
 el("celebrateBtn").addEventListener("click", startExperience);
 deck.addEventListener("click", drawCard);
 deck.addEventListener("keydown", (e) => {
   if (e.key === "Enter" || e.key === " ") { e.preventDefault(); drawCard(); }
 });
-stampHotspot.addEventListener("click", peelStamp);
+revealClose.addEventListener("click", closeReveal);
 el("changeGiftBtn").addEventListener("click", changeGift);
 claimForm.addEventListener("submit", submitClaim);
 el("exploreBtn").addEventListener("click", startFreeExplore);
