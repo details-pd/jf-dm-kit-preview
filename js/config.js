@@ -17,7 +17,7 @@ const KIT = {
   },
 
   copy: {
-    pageTitle: "Every Great Journey",
+    pageTitle: "Congratulations, Jonny and Kelly!",
     introHeadline: "Team is everything.",
     // Kharisel's Aug 14 landing letter — one entry per paragraph
     introBody: [
@@ -56,7 +56,7 @@ const KIT = {
   },
 
   board: {
-    image: "assets/v3/board-play.jpg",
+    image: "assets/v3/board-play.jpg?v=2",
     // native design space; all fractions map onto this (w, h)
     size: [1938, 3258],
     // where the pawns wait before the first draw — clear ABOVE milestone
@@ -79,48 +79,54 @@ const KIT = {
   // widthFrac = the sticker's native size in the .ai design
   // (piece export px / board render px), per head
   pawns: [
-    { img: "assets/v3/head-jonny.png", alt: "", widthFrac: 0.133 },
-    { img: "assets/v3/head-kelly.png", alt: "", widthFrac: 0.160 },
+    { img: "assets/v3/head-jonny.png?v=2", alt: "", widthFrac: 0.133 },
+    { img: "assets/v3/head-kelly.png?v=2", alt: "", widthFrac: 0.160 },
   ],
-  // side-by-side offset as a fraction of each head's width — 0.52 leaves
-  // a sliver of space between the heads (Kharisel, Aug 14)
-  pawnSpread: 0.52,
+  // side-by-side offset as a fraction of each head's width — 0.41 gives
+  // the slight overlap in Kharisel's Aug 14 pawn mock
+  pawnSpread: 0.41,
 
   deck: {
-    back: "assets/v3/card-back.png",
+    back: "assets/v3/card-back.png?v=2",
   },
 
   // milestones IN DRAW ORDER. slot = measured transform of the baked
   // card art on the board (see assets/v3/slots.json — regenerate with
   // the extraction script when the board art changes).
   milestones: [
+    // pawnPos = where the heads stand once this card is drawn (feet anchor,
+    // board fractions) — measured from Kharisel's Aug 14 placement mockups
     {
       id: "founding",
-      face: "assets/v3/face-founding.png",
-      yearCard: "assets/v3/year-2018.png",
+      face: "assets/v3/face-founding.png?v=2",
+      yearCard: "assets/v3/year-2018.png?v=2",
       alt: "Memory card: The Team Founding, 2018 — two glasses raised in a toast",
       slot: { cx: 0.2338, cy: 0.2565, w: 0.1977, h: 0.1533, angle: -3.81 },
+      pawnPos: [0.390, 0.406], // below-right of the card
     },
     {
       id: "contract",
-      face: "assets/v3/face-contract.png",
-      yearCard: "assets/v3/year-2021.png",
+      face: "assets/v3/face-contract.png?v=2",
+      yearCard: "assets/v3/year-2021.png?v=2",
       alt: "Memory card: Contract Talks Begin, 2021 — an engagement ring",
       slot: { cx: 0.6698, cy: 0.3986, w: 0.1956, h: 0.1533, angle: -3.49 },
+      pawnPos: [0.832, 0.516], // below-right of the card
     },
     {
       id: "signing",
-      face: "assets/v3/face-signing.png",
-      yearCard: "assets/v3/year-2022.png",
+      face: "assets/v3/face-signing.png?v=2",
+      yearCard: "assets/v3/year-2022.png?v=2",
       alt: "Memory card: Signing Day, 2022 — a wedding cake topped with a heart",
       slot: { cx: 0.3092, cy: 0.6211, w: 0.1977, h: 0.1533, angle: -3.07 },
+      pawnPos: [0.477, 0.653], // right of the card
     },
     {
       id: "henry",
-      face: "assets/v3/face-henry.png",
-      yearCard: "assets/v3/year-2026.png",
+      face: "assets/v3/face-henry.png?v=2",
+      yearCard: "assets/v3/year-2026.png?v=2",
       alt: "Memory card: Henry, Franchise Cornerstone, 2026 — a baby bottle",
       slot: { cx: 0.6298, cy: 0.8406, w: 0.1977, h: 0.1533, angle: 3.54 },
+      pawnPos: [0.432, 0.870], // left of the card
     },
   ],
 
@@ -129,22 +135,22 @@ const KIT = {
   gifts: [
     {
       name: "The Rookie Kit",
-      back: "assets/v3/gift-rookie-back.png",
-      front: "assets/v3/gift-rookie-front.png",
+      back: "assets/v3/gift-rookie-back.png?v=2",
+      front: "assets/v3/gift-rookie-front.png?v=2",
       backAlt: "Face-down gift card with a basketball sticker — flip to reveal",
       frontAlt: "The Rookie Kit — a Pacers baby tee. Click to choose this gift.",
     },
     {
       name: "The Highlight Reel",
-      back: "assets/v3/gift-highlight-back.png",
-      front: "assets/v3/gift-highlight-front.png",
+      back: "assets/v3/gift-highlight-back.png?v=2",
+      front: "assets/v3/gift-highlight-front.png?v=2",
       backAlt: "Face-down gift card with a photo-album sticker — flip to reveal",
       frontAlt: "The Highlight Reel — a baby photo album. Click to choose this gift.",
     },
     {
       name: "The Sixth Man",
-      back: "assets/v3/gift-sixthman-back.png",
-      front: "assets/v3/gift-sixthman-front.png",
+      back: "assets/v3/gift-sixthman-back.png?v=2",
+      front: "assets/v3/gift-sixthman-front.png?v=2",
       backAlt: "Face-down gift card with a serving-dish sticker — flip to reveal",
       frontAlt: "The Sixth Man — a CookUnity gift card. Click to choose this gift.",
     },
@@ -168,7 +174,7 @@ const KIT = {
   timing: {
     flipDur: 0.45,        // card flip in the revisit popup
     flyDur: 0.6,          // deck → slot flight of a drawn card
-    introZoomDur: 0.7,    // overview → play zoom
+    introZoomDur: 0.85,   // overview → play zoom (glimpse + zoom ≈ 1s total)
     overviewHold: 0.8,    // beat on the establishing shot
     walkSpeed: 0.10,      // path fraction per second the pawns walk
   },

@@ -167,14 +167,14 @@ function sizeDeck() {
 }
 
 /* ================= pawns ================= */
-let pawnT = null; // null = still waiting at startPos, off the track
+let pawnPoint = null; // current feet anchor in board px (null = at startPos)
 let partnerJoined = false; // second head pops in during the intro zoom
 
 const startPoint = () => ({
   x: KIT.board.startPos[0] * BW,
   y: KIT.board.startPos[1] * BH,
 });
-const currentPawnPoint = () => (pawnT === null ? startPoint() : TRACK.pointAt(pawnT));
+const currentPawnPoint = () => pawnPoint || startPoint();
 
 function renderPawnsAt(p) {
   // alone: dead-center; couple: side by side with a little air between
@@ -194,59 +194,60 @@ function softFollow(p) { // camera tracks the walking pawns, same zoom
   applyCam();
 }
 
-function walkPawnsTo(t, follow, onDone) {
+// walk to an arbitrary board point: step onto the track, travel along it,
+// then step off to the exact anchor (Kharisel dictates per-card anchors)
+function walkPawnsTo(targetPt, follow, onDone) {
   const bob = gsap.to(pawnEls(), { rotation: 4, duration: 0.18, repeat: -1, yoyo: true });
-  const settle = () => {
-    bob.kill();
-    gsap.to(pawnEls(), { rotation: 0, duration: 0.15 });
-    if (follow) {
-      const p = TRACK.pointAt(t);
-      cameraTo(camTargetFor(p.x, p.y, cam.s), 0.45, "power1.out", onDone);
-    } else if (onDone) onDone();
+  const from = currentPawnPoint();
+  const t0 = TRACK.nearestT(from.x, from.y);
+  const t1 = TRACK.nearestT(targetPt.x, targetPt.y);
+  const move = (p) => {
+    pawnPoint = p;
+    renderPawnsAt(p);
+    if (follow) softFollow(p);
   };
 
-  if (pawnT === null) {
-    // first move: step off the waiting spot straight onto the track
-    const from = startPoint();
-    const to = TRACK.pointAt(t);
-    const state = { f: 0 };
-    gsap.to(state, {
-      f: 1, duration: 1.0, ease: "power1.inOut",
-      onUpdate: () => {
-        const p = { x: from.x + (to.x - from.x) * state.f,
-                    y: from.y + (to.y - from.y) * state.f };
-        renderPawnsAt(p);
-        if (follow) softFollow(p);
-      },
-      onComplete: () => { pawnT = t; settle(); },
-    });
-    return;
-  }
-
-  const dist = Math.abs(t - pawnT);
-  const dur = Math.max(0.7, dist / KIT.timing.walkSpeed);
-  const state = { t: pawnT };
-  gsap.to(state, {
-    t,
-    duration: dur,
-    ease: "power1.inOut",
-    onUpdate: () => {
-      pawnT = state.t;
-      positionPawns();
-      if (follow) softFollow(TRACK.pointAt(state.t));
+  const tl = gsap.timeline({
+    onComplete: () => {
+      bob.kill();
+      gsap.to(pawnEls(), { rotation: 0, duration: 0.15 });
+      if (follow) {
+        cameraTo(camTargetFor(targetPt.x, targetPt.y, cam.s), 0.45, "power1.out", onDone);
+      } else if (onDone) onDone();
     },
-    onComplete: settle,
   });
+
+  const lerpSeg = (a, b) => {
+    if (Math.hypot(b.x - a.x, b.y - a.y) < 12) return;
+    const st = { f: 0 };
+    tl.to(st, {
+      f: 1, duration: 0.4, ease: "power1.inOut",
+      onUpdate: () => move({ x: a.x + (b.x - a.x) * st.f, y: a.y + (b.y - a.y) * st.f }),
+    });
+  };
+
+  lerpSeg(from, TRACK.pointAt(t0));
+  if (Math.abs(t1 - t0) > 0.002) {
+    const st = { t: t0 };
+    tl.to(st, {
+      t: t1,
+      duration: Math.max(0.7, Math.abs(t1 - t0) / KIT.timing.walkSpeed),
+      ease: "power1.inOut",
+      onUpdate: () => move(TRACK.pointAt(st.t)),
+    });
+  }
+  lerpSeg(TRACK.pointAt(t1), targetPt);
 }
 
-// where the pawns stand for milestone i: on the track, stepped back far
-// enough that the heads don't cover the placed card
-function milestoneStandT(i) {
+// where the heads stand once milestone i is placed
+function milestoneAnchor(i) {
   const m = KIT.milestones[i];
+  if (m.pawnPos) return { x: m.pawnPos[0] * BW, y: m.pawnPos[1] * BH };
+  // fallback: on the track, a card-width shy of the slot
   const t = TRACK.nearestT(m.slot.cx * BW, m.slot.cy * BH);
-  const stepBack = (m.slot.w * BW * 0.9) / TRACK.total; // ~a card-width of arc
-  return Math.max(0, t - stepBack);
+  return TRACK.pointAt(Math.max(0, t - (m.slot.w * BW * 0.9) / TRACK.total));
 }
+
 
 /* ================= game state ================= */
 let drawn = 0;
@@ -298,22 +299,18 @@ function startExperience() {
     .to("#introCard", { y: 46, opacity: 0, scale: 0.96, duration: 0.35, ease: "power1.in" }, 0)
     .to(intro, { backgroundColor: "rgba(5,7,22,0)", duration: 0.5 }, 0.15)
     .add(() => { intro.style.display = "none"; }, 0.65)
-    // brief beat on the undimmed overview…
-    .to({}, { duration: 0.3 })
-    // …zoom to the start of the track; partner pops in mid-zoom
-    .add("zoom")
+    // quick glimpse of the full board — overview + zoom ≈ 1s (Kharisel)
+    .to({}, { duration: 0.15 })
     .to(cam, {
       x: play.x, y: play.y, s: play.s,
       duration: KIT.timing.introZoomDur, ease: "power2.inOut",
       onUpdate: applyCam,
-    }, "zoom")
-    .add(() => { partnerJoined = true; positionPawns(); },
-      `zoom+=${KIT.timing.introZoomDur * 0.5}`)
-    .to(el("pawn-1"), {
-      opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2.2)",
-    }, `zoom+=${KIT.timing.introZoomDur * 0.55}`)
-    .to(pawnEls(), { scale: 1.06, yoyo: true, repeat: 1, duration: 0.15 }, ">-0.1")
-    .to(deckArea, { opacity: 1, duration: 0.4 }, "-=0.3");
+    })
+    // Kelly and the deck pop up AFTER the zoom, not during (Kharisel)
+    .add(() => { partnerJoined = true; positionPawns(); })
+    .to(el("pawn-1"), { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2.2)" })
+    .to(deckArea, { opacity: 1, duration: 0.4 }, "<")
+    .to(pawnEls(), { scale: 1.06, yoyo: true, repeat: 1, duration: 0.15 }, ">-0.05");
 }
 
 /* ================= deck prompt =================
@@ -384,7 +381,7 @@ function drawCard() {
       gsap.set(revealCard, { x: 0, y: 0, scale: 1, rotation: 0 });
       drawn += 1;
 
-      walkPawnsTo(milestoneStandT(index), true, () => {
+      walkPawnsTo(milestoneAnchor(index), true, () => {
         // after the last placement the deck invites one more click
         // ("Click for a surprise") instead of auto-opening the gifts
         busy = false;
@@ -425,6 +422,18 @@ function showReveal(index) {
 function closeReveal() {
   gsap.to(reveal, { opacity: 0, duration: 0.25, onComplete: () => {
     reveal.style.display = "none";
+  }});
+}
+
+// gift-screen exit (Kharisel): back to the board; the deck re-invites
+function closeGiftSelect() {
+  if (chosenGift) return;
+  gsap.to(giftSelect, { opacity: 0, duration: 0.3, onComplete: () => {
+    giftSelect.style.display = "none";
+    gsap.set(giftSelect, { opacity: 1 });
+    surpriseShown = false;
+    busy = false;
+    promptDeck();
   }});
 }
 
@@ -655,18 +664,26 @@ buildGifts();
 applyCopy();
 setupGiftCards();
 primeStage(); // board (dimmed) is the landing backdrop
+// stars pop in after the letter is on screen (Kharisel)
+gsap.from(".sparkle", {
+  scale: 0, opacity: 0, duration: 0.45, ease: "back.out(2.5)",
+  stagger: 0.12, delay: 0.5,
+});
 el("celebrateBtn").addEventListener("click", startExperience);
 deck.addEventListener("click", drawCard);
 deck.addEventListener("keydown", (e) => {
   if (e.key === "Enter" || e.key === " ") { e.preventDefault(); drawCard(); }
 });
 revealClose.addEventListener("click", closeReveal);
-// ESC works like the X (only once the X itself is active)
+el("giftClose").addEventListener("click", closeGiftSelect);
+// ESC works like the X buttons
 window.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" &&
-      getComputedStyle(reveal).display !== "none" &&
+  if (e.key !== "Escape") return;
+  if (getComputedStyle(reveal).display !== "none" &&
       revealClose.style.pointerEvents === "auto") {
     closeReveal();
+  } else if (getComputedStyle(giftSelect).display !== "none") {
+    closeGiftSelect();
   }
 });
 el("changeGiftBtn").addEventListener("click", changeGift);
