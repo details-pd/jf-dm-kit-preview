@@ -63,11 +63,12 @@ const KIT = {
 
   // game pieces (sticker heads). The second pawn pops in during the
   // intro zoom, BEFORE the first draw (Sarah, Aug 13).
+  // widthFrac = the sticker's native size in the .ai design
+  // (piece export px / board render px), per head
   pawns: [
-    { img: "assets/v3/head-jonny.png", alt: "" },
-    { img: "assets/v3/head-kelly.png", alt: "" },
+    { img: "assets/v3/head-jonny.png", alt: "", widthFrac: 0.133 },
+    { img: "assets/v3/head-kelly.png", alt: "", widthFrac: 0.160 },
   ],
-  pawnWidthFrac: 0.075, // of board width, per head
 
   deck: {
     back: "assets/v3/card-back.png",

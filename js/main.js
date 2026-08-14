@@ -53,7 +53,7 @@ function buildBoard() {
     img.className = "pawn";
     img.src = p.img;
     img.alt = p.alt;
-    img.style.width = KIT.pawnWidthFrac * BW + "px";
+    img.style.width = p.widthFrac * BW + "px";
     img.style.zIndex = 10 - i;
     board.appendChild(img);
     // anchor low on the band so the heads read as standing ON the track
@@ -171,10 +171,10 @@ const startPoint = () => ({
 const currentPawnPoint = () => (pawnT === null ? startPoint() : TRACK.pointAt(pawnT));
 
 function renderPawnsAt(p) {
-  const w = KIT.pawnWidthFrac * BW;
   // alone: dead-center; couple: side by side, slight overlap
   const offs = partnerJoined ? [-0.34, 0.34] : [0, 0];
   pawnEls().forEach((e, i) => {
+    const w = KIT.pawns[i].widthFrac * BW;
     gsap.set(e, { left: p.x + offs[i] * w + "px", top: p.y + "px" });
   });
 }
