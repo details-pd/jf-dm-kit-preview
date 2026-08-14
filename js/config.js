@@ -56,15 +56,18 @@ const KIT = {
   },
 
   board: {
-    image: "assets/v3/board-play.jpg?v=2",
+    image: "assets/v3/board-play.jpg?v=3",
     // native design space; all fractions map onto this (w, h)
     size: [1938, 3258],
-    // where the pawns wait before the first draw — clear ABOVE milestone
-    // 1's card, not overlapping it (Kharisel, Aug 14)
-    startPos: [0.225, 0.140],
+    // where the pawns wait before the first draw — on the opening segment,
+    // exactly where the heads sat in Kharisel's Aug 14 board (pre-2018 track)
+    startPos: [0.271, 0.150],
     // pawn track — traced along the painted band's centerline, start → finish
     // (verify against the art with tools/ + trackviz when the board changes)
     track: [
+      [0.945, 0.022], [0.845, 0.042], [0.762, 0.075], [0.660, 0.108],
+      [0.550, 0.128], [0.440, 0.150], [0.350, 0.175], [0.295, 0.205],
+      [0.253, 0.240], [0.222, 0.278],
       [0.205, 0.332], [0.293, 0.364], [0.383, 0.397], [0.473, 0.419],
       [0.560, 0.432], [0.660, 0.450], [0.755, 0.480], [0.833, 0.530],
       [0.805, 0.585], [0.720, 0.607], [0.600, 0.622], [0.483, 0.638],
