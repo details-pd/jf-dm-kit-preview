@@ -160,6 +160,12 @@ function cameraTo(target, dur, ease, onDone) {
   });
 }
 
+// deck matches the on-screen size of the cards on the board (Kharisel)
+function sizeDeck() {
+  const w = KIT.milestones[0].slot.w * BW * playScale();
+  el("deckArea").style.width = Math.round(w) + "px";
+}
+
 /* ================= pawns ================= */
 let pawnT = null; // null = still waiting at startPos, off the track
 let partnerJoined = false; // second head pops in during the intro zoom
@@ -171,8 +177,9 @@ const startPoint = () => ({
 const currentPawnPoint = () => (pawnT === null ? startPoint() : TRACK.pointAt(pawnT));
 
 function renderPawnsAt(p) {
-  // alone: dead-center; couple: side by side, slight overlap
-  const offs = partnerJoined ? [-0.34, 0.34] : [0, 0];
+  // alone: dead-center; couple: side by side with a little air between
+  const s = KIT.pawnSpread;
+  const offs = partnerJoined ? [-s, s] : [0, 0];
   pawnEls().forEach((e, i) => {
     const w = KIT.pawns[i].widthFrac * BW;
     gsap.set(e, { left: p.x + offs[i] * w + "px", top: p.y + "px" });
@@ -274,6 +281,7 @@ function primeStage() {
   positionPawns(); // waiting at startPos, above the first card
   gsap.set(el("pawn-1"), { opacity: 0, scale: 0.4 }); // pawn 2 joins later
   gsap.set(deckArea, { opacity: 0 });
+  sizeDeck();
 }
 
 function startExperience() {
@@ -308,11 +316,13 @@ function startExperience() {
     .to(deckArea, { opacity: 1, duration: 0.4 }, "-=0.3");
 }
 
-/* ================= deck prompt ================= */
+/* ================= deck prompt =================
+   Copy only before the first draw and after the last placement
+   ("Click for a surprise"); in between the shake is the reminder. */
 function promptDeck() {
-  if (drawn >= KIT.milestones.length) return;
+  if (drawn > KIT.milestones.length) return;
   const prompts = KIT.copy.deckPrompts;
-  deckBubble.textContent = prompts[Math.min(drawn, prompts.length - 1)];
+  deckBubble.textContent = prompts[Math.min(drawn, prompts.length - 1)] || "";
   gsap.fromTo(deck, { rotation: -3 }, {
     rotation: 3, duration: 0.12, repeat: 7, yoyo: true,
     onComplete: () => gsap.set(deck, { rotation: 0 }),
@@ -327,8 +337,19 @@ function promptDeck() {
 /* ================= draw: card flies from the deck, lies flat on its slot =================
    No shuffle, no popup, no X (Waheed, Aug 13 PM): clicking the deck sends
    the card straight to its board position, flipping face-up mid-flight. */
+let surpriseShown = false;
+
 function drawCard() {
-  if (busy || freeExplore || drawn >= KIT.milestones.length) return;
+  if (busy || freeExplore) return;
+  if (drawn >= KIT.milestones.length) {
+    // final deck click = the surprise (Kharisel, Aug 14)
+    if (surpriseShown) return;
+    surpriseShown = true;
+    busy = true;
+    deckBubble.textContent = "";
+    showGiftSelect();
+    return;
+  }
   busy = true;
   deckBubble.textContent = "";
 
@@ -364,12 +385,10 @@ function drawCard() {
       drawn += 1;
 
       walkPawnsTo(milestoneStandT(index), true, () => {
-        if (drawn >= KIT.milestones.length) {
-          gsap.delayedCall(0.7, showGiftSelect);
-        } else {
-          busy = false;
-          promptDeck();
-        }
+        // after the last placement the deck invites one more click
+        // ("Click for a surprise") instead of auto-opening the gifts
+        busy = false;
+        promptDeck();
       });
     },
   })
@@ -593,6 +612,7 @@ stage.addEventListener("wheel", (e) => {
 window.addEventListener("resize", () => {
   if (stage.style.visibility !== "visible") return;
   positionPawns();
+  sizeDeck();
   if (!started) { // still on the landing letter: keep the overview fit
     const fs = fitScale();
     Object.assign(cam, { s: fs, ...clampCam((vw() - BW * fs) / 2, (vh() - BH * fs) / 2, fs) });

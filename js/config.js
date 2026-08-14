@@ -28,11 +28,15 @@ const KIT = {
       "Cheering you on always,<br>The Pixel Dreams Team",
     ],
     introCta: "Dive in",
+    // bubble copy by number of cards already placed; empty = deck just
+    // shakes as the reminder (Sarah via Kharisel, Aug 14). The final
+    // entry invites the deck click that reveals the gifts.
     deckPrompts: [
-      "Click the deck to shuffle!",
-      "One memory placed — draw again!",
-      "Two down — keep going!",
-      "One last card…",
+      "Take me to the next milestone",
+      "",
+      "",
+      "",
+      "Click for a surprise",
     ],
     giftTitle: "Time to Celebrate",
     giftSub: "We’d love to send you a gift to commemorate this incredible moment in your lives. Browse the options below and choose your favorite.",
@@ -54,8 +58,9 @@ const KIT = {
     image: "assets/v3/board-play.jpg",
     // native design space; all fractions map onto this (w, h)
     size: [1938, 3258],
-    // where the pawns wait before the first draw (above milestone 1's card)
-    startPos: [0.225, 0.168],
+    // where the pawns wait before the first draw — clear ABOVE milestone
+    // 1's card, not overlapping it (Kharisel, Aug 14)
+    startPos: [0.225, 0.140],
     // pawn track — traced along the painted band's centerline, start → finish
     // (verify against the art with tools/ + trackviz when the board changes)
     track: [
@@ -76,6 +81,9 @@ const KIT = {
     { img: "assets/v3/head-jonny.png", alt: "", widthFrac: 0.133 },
     { img: "assets/v3/head-kelly.png", alt: "", widthFrac: 0.160 },
   ],
+  // side-by-side offset as a fraction of each head's width — 0.52 leaves
+  // a sliver of space between the heads (Kharisel, Aug 14)
+  pawnSpread: 0.52,
 
   deck: {
     back: "assets/v3/card-back.png",

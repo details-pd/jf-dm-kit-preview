@@ -25,7 +25,7 @@ body {
   height: 100%;
   font-family: "Roboto", "Avenir Next", system-ui, sans-serif;
   color: var(--ink);
-  background: #171310; /* surround behind the board's baked black frame */
+  background: #381d10; /* wooden-table brown (Kharisel, Aug 14) */
   overflow: hidden;    /* the camera moves, the page never scrolls */
 }
 
@@ -161,7 +161,7 @@ h1, h2, h3, h4, .btn {
   position: fixed;
   right: 3%;
   bottom: 4%;
-  width: clamp(90px, 11vmin, 150px);
+  width: 140px; /* fallback — JS sizes it to match the board cards */
   z-index: 40;
   opacity: 0;
 }
@@ -425,8 +425,8 @@ h1, h2, h3, h4, .btn {
 
 /* ============ small screens ============ */
 @media (max-width: 700px) {
-  /* bottom-left keeps the deck clear of the reveal X and the thumb zone */
-  .deck-area { left: 3%; right: auto; bottom: 3%; width: clamp(74px, 20vmin, 110px); }
+  /* bottom-left keeps the deck clear of the thumb zone (JS sets width) */
+  .deck-area { left: 3%; right: auto; bottom: 3%; }
   .reveal-close { top: -10px; right: -10px; width: 40px; height: 40px; }
   .gift-flip { width: min(78vw, 340px); }
 }
