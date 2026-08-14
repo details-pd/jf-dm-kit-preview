@@ -5,7 +5,7 @@ import os
 from PIL import Image
 
 OUT = "/Users/details/apps-script-backups/jonny-fruits-dm-kit/assets/v3"
-DARK = 95   # backdrop luminance ceiling (safe: below all card content)
+DARK = 60   # blurred-luminance backdrop ceiling
 SHADOW = 0    # shave disabled: remnant shadow reads correctly on the dim backdrop
 
 def lum(p):
@@ -48,22 +48,46 @@ def find_cards(path):
     return im, boxes
 
 def cut(im, box, out_name):
-    """Full-res flood fill from crop edges over dark pixels -> transparent bg."""
+    """Full-res flood fill from crop edges over DARK NEIGHBORHOODS.
+    Using box-blurred luminance (radius 3) instead of per-pixel values means
+    the flood cannot squeeze through thin dark outlines (their neighborhoods
+    are brightened by the surrounding art) — that leak is what previously
+    hollowed out card interiors. The faint dim ring left at card edges reads
+    as the card's own shadow."""
     crop = im.crop(box).convert("RGB")
     w, h = crop.size
     px = crop.load()
+
+    # integral image of luminance -> blurred lum lookup
+    integ = [[0] * (w + 1) for _ in range(h + 1)]
+    for y in range(h):
+        row = integ[y + 1]
+        prev = integ[y]
+        acc = 0
+        for x in range(w):
+            acc += lum(px[x, y])
+            row[x + 1] = prev[x + 1] + acc
+    R = 3
+    def blur(x, y):
+        x0, x1 = max(0, x - R), min(w, x + R + 1)
+        y0, y1 = max(0, y - R), min(h, y + R + 1)
+        return (integ[y1][x1] - integ[y0][x1] - integ[y1][x0] + integ[y0][x0]) / ((x1 - x0) * (y1 - y0))
+
     bg = bytearray(w * h)  # 1 = background
-    stack = [(x, y) for x in range(w) for y in (0, h - 1)] + \
-            [(0, y) for y in range(h)] + [(w - 1, y) for y in range(h)]
-    for x, y in stack:
-        if lum(px[x, y]) < DARK:
-            bg[y * w + x] = 1
-    stack = [(x, y) for x in range(w) for y in range(h) if bg[y * w + x]]
+    stack = []
+    for x in range(w):
+        for y in (0, h - 1):
+            if blur(x, y) < DARK:
+                bg[y * w + x] = 1; stack.append((x, y))
+    for y in range(h):
+        for x in (0, w - 1):
+            if blur(x, y) < DARK and not bg[y * w + x]:
+                bg[y * w + x] = 1; stack.append((x, y))
     while stack:
         x, y = stack.pop()
         for dx, dy in ((1,0),(-1,0),(0,1),(0,-1)):
             nx, ny = x + dx, y + dy
-            if 0 <= nx < w and 0 <= ny < h and not bg[ny * w + nx] and lum(px[nx, ny]) < DARK:
+            if 0 <= nx < w and 0 <= ny < h and not bg[ny * w + nx] and blur(nx, ny) < DARK:
                 bg[ny * w + nx] = 1
                 stack.append((nx, ny))
     # keep only the largest opaque component (drops detached shadow blobs)
@@ -123,7 +147,11 @@ def cut(im, box, out_name):
     # trim to opaque bbox
     rgba = rgba.crop(rgba.getchannel("A").getbbox())
     rgba.save(os.path.join(OUT, out_name))
-    print(out_name, rgba.size)
+    # sanity: the central card area must be solid (no see-through holes)
+    cw, ch = rgba.size
+    core = rgba.getchannel("A").crop((int(cw*0.2), int(ch*0.15), int(cw*0.8), int(ch*0.75)))
+    holes = sum(1 for a in core.getdata() if a < 128) / (core.size[0] * core.size[1])
+    print(out_name, rgba.size, f"core-holes={holes:.4%}")
 
 names = ["rookie", "highlight", "sixthman"]
 for page, kind in (("d3backs-4.png", "back"), ("d3fronts-5.png", "front")):

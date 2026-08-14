@@ -23,15 +23,17 @@
 html { height: 100%; }
 body {
   height: 100%;
-  font-family: "DM Sans", "Avenir Next", system-ui, sans-serif;
+  font-family: "Roboto", "Avenir Next", system-ui, sans-serif;
   color: var(--ink);
   background: #171310; /* surround behind the board's baked black frame */
   overflow: hidden;    /* the camera moves, the page never scrolls */
 }
 
+/* headings match the .ai's embedded Bricolage Grotesque ExtraBold —
+   normal width, no condensing */
 h1, h2, h3, h4, .btn {
-  font-family: "Bricolage Grotesque", "DM Sans", system-ui, sans-serif;
-  font-stretch: 87.5%;
+  font-family: "Bricolage Grotesque", "Roboto", system-ui, sans-serif;
+  font-weight: 800;
 }
 
 .btn {
@@ -85,9 +87,9 @@ h1, h2, h3, h4, .btn {
 .intro-body::-webkit-scrollbar { width: 4px; }
 .intro-body::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.18); border-radius: 4px; }
 .intro-body p {
-  font-weight: 500;
+  font-weight: 400; /* Roboto Regular, per the design */
   font-size: clamp(0.85rem, 2.1vh, 1rem);
-  line-height: 1.45;
+  line-height: 1.5;
   color: #16130c;
   margin-bottom: 0.95em;
 }
@@ -270,7 +272,7 @@ h1, h2, h3, h4, .btn {
   inset: 0;
   z-index: 84;
   display: none;
-  background: var(--dim);
+  background: rgba(4, 6, 16, 0.86); /* heavier dim than popups, per design */
   padding: 3vh 3vw;
   overflow-y: auto; /* cards stack taller than the screen on phones */
 }
@@ -328,7 +330,12 @@ h1, h2, h3, h4, .btn {
   filter: grayscale(0.7);
   opacity: 0.45;
 }
-.gift-flip.chosen .gift-flip-inner { filter: drop-shadow(0 0 22px rgba(255, 215, 106, 0.85)); }
+/* glow goes on the face IMAGE, never on .gift-flip-inner — a filter there
+   flattens preserve-3d and renders the front face mirrored */
+.gift-flip.chosen .gf-face-up {
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.35))
+          drop-shadow(0 0 20px rgba(255, 215, 106, 0.9));
+}
 
 /* ============ form ============ */
 .form-overlay {
