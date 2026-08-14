@@ -526,6 +526,7 @@ function submitClaim(e) {
     name: KIT.recipient.name,
     phone,
     address,
+    instructions: el("fInstructions").value.trim(), // optional
     submittedAt: new Date().toISOString(),
   };
 
@@ -638,6 +639,7 @@ function applyCopy() {
   el("changeGiftBtn").textContent = KIT.copy.formChangeCta;
   el("fPhoneLabel").textContent = KIT.copy.formPhoneLabel;
   el("fAddressLabel").textContent = KIT.copy.formAddressLabel;
+  el("fInstructionsLabel").textContent = KIT.copy.formInstructionsLabel;
   el("submitBtn").textContent = KIT.copy.formSubmitCta;
   el("thanksTitle").textContent = KIT.copy.thanksTitle;
   el("thanksBody").textContent = KIT.copy.thanksBody;

@@ -102,7 +102,7 @@ def erase(box):
         for tx in range(x0, x1, tw):
             board.paste(tile.crop((0, 0, min(tw, x1 - tx), min(th, y1 - ty))), (tx, ty))
 
-erase((70, 45, 490, 350))    # heads
+erase((70, 45, 490, 333))    # heads — must stay ABOVE the milestone-1 card stack
 erase((815, 55, 1140, 430))  # deck
 report["bg_color"] = bg
 

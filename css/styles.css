@@ -9,7 +9,7 @@
   --blue: #1f4fd8;    /* deck / card-back blue */
   --blue-dark: #00072a;
   --cyan: #35c7f5;    /* letter-card border (landing/form/thanks) */
-  --red: #f04b23;     /* red-orange from the track segments */
+  --red: #ff3300;     /* button red (Kharisel, Aug 14) */
   --green: #17a35c;
   --ink: #14110a;
   --gold: #ffd76a;
@@ -375,6 +375,8 @@ h1, h2, h3, h4, .btn {
 }
 .form-gift-line strong { color: var(--blue-dark); }
 .link-btn {
+  display: block; /* sits on its own line under the gift choice */
+  margin: 0.45em auto 0;
   background: none;
   border: none;
   font: inherit;
@@ -383,8 +385,13 @@ h1, h2, h3, h4, .btn {
   color: var(--red);
   text-decoration: underline;
   cursor: pointer;
-  margin-left: 0.5em;
   padding: 0;
+}
+/* Submit: centered, natural width instead of full-bleed */
+.btn-submit {
+  display: block;
+  margin: 0.4rem auto 0;
+  min-width: 45%;
 }
 .field { margin-bottom: 1rem; }
 .field label { display: block; font-weight: 700; margin-bottom: 0.3em; }
