@@ -35,7 +35,7 @@ const KIT = {
       "One last card…",
     ],
     giftTitle: "Time to Celebrate",
-    giftSub: "We’d love to send you a gift to commemorate this incredible moment in your lives. Browse the options below and choose your favourite.",
+    giftSub: "We’d love to send you a gift to commemorate this incredible moment in your lives. Browse the options below and choose your favorite.",
     formTitle: "Where should it fly to?",
     formGiftLead: "Your gift:",
     formChangeCta: "change my mind",
