@@ -651,7 +651,7 @@ function applyCopy() {
   el("fInstructionsLabel").textContent = KIT.copy.formInstructionsLabel;
   el("submitBtn").textContent = KIT.copy.formSubmitCta;
   el("thanksTitle").textContent = KIT.copy.thanksTitle;
-  el("thanksBody").textContent = KIT.copy.thanksBody;
+  el("thanksBody").innerHTML = KIT.copy.thanksBody; // may carry a <br>
   el("exploreBtn").textContent = KIT.copy.thanksCta;
 }
 

@@ -50,7 +50,7 @@ const KIT = {
     formMissing: "Please fill in your phone number and address.",
     formFailed: "Hmm, that didn’t send — mind trying once more?",
     thanksTitle: "Your gift is on the way!",
-    thanksBody: "Expect it to arrive within two weeks. Congratulations again, Jonny and Kelly.",
+    thanksBody: "Expect it to arrive within two weeks.<br>Congratulations again, Jonny and Kelly.",
     thanksCta: "Back to the board",
     explorePrompt: "Click a memory to revisit it.",
   },
