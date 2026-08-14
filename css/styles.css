@@ -8,6 +8,7 @@
   --cream: #fdf8dd;   /* board background cream */
   --blue: #1f4fd8;    /* deck / card-back blue */
   --blue-dark: #00072a;
+  --cyan: #35c7f5;    /* letter-card border (landing/form/thanks) */
   --red: #f04b23;     /* red-orange from the track segments */
   --green: #17a35c;
   --ink: #14110a;
@@ -49,66 +50,69 @@ h1, h2, h3, h4, .btn {
 .btn-secondary { background: var(--green); color: #fff; }
 .btn-wide      { width: 100%; }
 
-/* ============ intro (game box — redesign pending) ============ */
+/* ============ intro: letter card over the dimmed board ============ */
 .intro-overlay {
   position: fixed;
   inset: 0;
   z-index: 100;
   display: grid;
   place-items: center;
-  background: var(--yellow);
-}
-.game-box { position: relative; perspective: 1200px; }
-.box-base {
-  position: absolute;
-  left: 4%; right: 4%;
-  top: 14px; bottom: -18px;
-  background: #ecdcb4;
-  border: 4px solid var(--ink);
-  border-radius: 20px;
-  box-shadow: 0 14px 30px rgba(5, 7, 22, 0.35);
+  background: var(--dim); /* board shows through, dimmed */
+  padding: 4vh 4vw;
 }
 .intro-card {
   position: relative;
-  width: min(680px, 88vw);
-  background: var(--cream);
-  border: 4px solid var(--ink);
-  border-radius: 24px;
-  box-shadow: var(--shadow), 0 8px 0 var(--ink);
-  padding: clamp(2rem, 6vw, 4rem);
-  text-align: center;
-  transform-style: preserve-3d;
-}
-.intro-card::after {
-  content: "";
-  position: absolute;
-  inset: 12px;
-  border: 2px dashed rgba(5, 7, 22, 0.18);
-  border-radius: 14px;
-  pointer-events: none;
+  width: min(480px, 92vw);
+  background: #fff;
+  border: 9px solid var(--cyan);
+  border-radius: 26px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  padding: clamp(1.6rem, 4vw, 2.4rem) clamp(1.6rem, 4vw, 2.4rem) clamp(2.2rem, 5vw, 3rem);
+  text-align: left;
 }
 .intro-card h1 {
   font-weight: 800;
-  font-size: clamp(1.6rem, 4.5vw, 3rem);
-  line-height: 1.1;
-  color: var(--blue-dark);
-  margin-bottom: 0.6em;
+  font-size: clamp(1.7rem, 5vh, 2.5rem);
+  line-height: 1.05;
+  color: var(--ink);
+  margin-bottom: 0.7em;
 }
-.intro-sub {
+.intro-body {
+  max-height: calc(76vh - 190px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.intro-body::-webkit-scrollbar { width: 4px; }
+.intro-body::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.18); border-radius: 4px; }
+.intro-body p {
   font-weight: 500;
-  color: var(--blue-dark);
-  margin-bottom: 2em;
+  font-size: clamp(0.85rem, 2.1vh, 1rem);
+  line-height: 1.45;
+  color: #16130c;
+  margin-bottom: 0.95em;
 }
-.intro-card-decor .decor {
+/* the CTA rides the card's bottom-right edge, per the design */
+.intro-cta {
   position: absolute;
-  font-size: 1.6rem;
-  opacity: 0.85;
-  color: var(--red);
+  right: 24px;
+  bottom: -30px;
+  border: 4px solid #fff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  font-size: 1.15rem;
+  padding: 0.65em 1.5em;
 }
-.decor.star  { top: 14px; left: 22px; }
-.decor.heart { top: 20px; right: 28px; }
-.decor.star2 { bottom: 18px; left: 40px; }
-.decor.cloud { bottom: 12px; right: 22px; }
+.intro-cta:hover { box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5); }
+.intro-cta:active { box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45); }
+/* sparkle stickers on the card edges */
+.sparkle {
+  position: absolute;
+  width: clamp(28px, 4.5vh, 44px);
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.35));
+}
+.sparkle svg { width: 100%; height: auto; display: block; }
+.sp-1 { top: -30px; right: 56px; }
+.sp-2 { top: 10px; right: -26px; width: clamp(22px, 3.5vh, 34px); }
+.sp-3 { left: -28px; top: 46%; width: clamp(20px, 3.2vh, 30px); }
 
 /* ============ stage + board (camera-driven) ============ */
 .stage {
@@ -272,18 +276,17 @@ h1, h2, h3, h4, .btn {
 }
 .giftselect-stage { margin: auto; }
 .giftselect-title {
-  color: var(--cream);
-  font-size: clamp(1.3rem, 3.4vw, 2.4rem);
+  color: #fff;
+  font-size: clamp(1.5rem, 4vw, 2.8rem);
   text-align: center;
-  text-shadow: 0 2px 0 rgba(5, 7, 22, 0.5);
 }
 .giftselect-sub {
   text-align: center;
-  font-weight: 600;
-  color: var(--cream);
-  opacity: 0.9;
-  font-size: clamp(0.9rem, 1.5vw, 1.2rem);
-  margin: 0.4em 0 1.8em;
+  font-weight: 500;
+  color: #fff;
+  opacity: 0.95;
+  font-size: clamp(0.85rem, 1.5vw, 1.1rem);
+  margin: 0.4em 0 1.6em;
 }
 .gift-flip-row {
   display: flex;
@@ -292,9 +295,11 @@ h1, h2, h3, h4, .btn {
   align-items: stretch;
   flex-wrap: wrap;
 }
+/* card chrome (white border, pill button) is baked into the artwork;
+   the whole card is one click target */
 .gift-flip {
-  width: clamp(200px, min(27vw, 47vh), 480px);
-  aspect-ratio: 3 / 4.2;
+  width: clamp(190px, min(24vw, 40vh), 400px);
+  aspect-ratio: 801 / 1118; /* the exported card art's ratio */
   perspective: 1100px;
   cursor: pointer;
 }
@@ -310,52 +315,20 @@ h1, h2, h3, h4, .btn {
 .gf-face {
   position: absolute;
   inset: 0;
-  backface-visibility: hidden;
-  border: 4px solid var(--ink);
-  border-radius: 16px;
-  background: var(--cream);
-  box-shadow: var(--shadow);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5em;
-  padding: 1.2em 1em;
-  text-align: center;
-}
-.gf-front .gf-emoji { font-size: clamp(2.2rem, 5vw, 3.4rem); }
-.gf-face h4 { color: var(--blue-dark); font-size: clamp(0.95rem, 1.8vw, 1.25rem); }
-.gf-front p { font-size: clamp(0.75rem, 1.3vw, 0.95rem); font-weight: 600; }
-.gf-hint {
-  margin-top: 0.8em;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--red);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-.gf-back { transform: rotateY(180deg); padding: 0; overflow: hidden; }
-.gf-art {
-  position: absolute;
-  inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  backface-visibility: hidden;
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.35));
 }
-.gf-select {
-  position: relative;
-  z-index: 1;
-  margin-top: auto;
-  margin-bottom: 4%;
-  font-size: clamp(0.72rem, 1.2vw, 0.9rem);
-  padding: 0.6em 1.2em;
-}
+.gf-face-down { transform: rotateY(0deg); }
+.gf-face-up   { transform: rotateY(180deg); }
 .gift-flip.disabled {
   pointer-events: none;
   filter: grayscale(0.7);
   opacity: 0.45;
 }
-.gift-flip.chosen .gf-face { border-color: #b8860b; box-shadow: 0 0 22px 4px rgba(255, 215, 106, 0.8); }
+.gift-flip.chosen .gift-flip-inner { filter: drop-shadow(0 0 22px rgba(255, 215, 106, 0.85)); }
 
 /* ============ form ============ */
 .form-overlay {
@@ -367,14 +340,14 @@ h1, h2, h3, h4, .btn {
   background: var(--dim);
   padding: 4vh 4vw;
 }
-.form-stamp-frame {
-  width: min(560px, 94vw);
+/* same letter-card treatment as the landing (Kharisel, Aug 14 Slack) */
+.form-frame {
+  width: min(520px, 94vw);
   max-height: 88vh;
-  background: var(--cream);
-  border: 4px dashed var(--red);
-  outline: 10px solid var(--cream);
-  border-radius: 6px;
-  box-shadow: var(--shadow);
+  background: #fff;
+  border: 9px solid var(--cyan);
+  border-radius: 26px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
   display: flex;
 }
 .form-scroll {
@@ -432,11 +405,11 @@ h1, h2, h3, h4, .btn {
   background: var(--dim);
 }
 .thanks-card {
-  width: min(560px, 90vw);
-  background: var(--cream);
-  border: 4px solid var(--ink);
-  border-radius: 20px;
-  box-shadow: var(--shadow), 0 8px 0 var(--ink);
+  width: min(520px, 90vw);
+  background: #fff;
+  border: 9px solid var(--cyan);
+  border-radius: 26px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
   padding: clamp(1.8rem, 5vw, 3rem);
   text-align: center;
 }

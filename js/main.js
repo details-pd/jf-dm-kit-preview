@@ -261,20 +261,25 @@ const claimForm = el("claimForm");
 const formError = el("formError");
 const thanks = el("thanks");
 
-/* ================= intro: unbox → overview → zoom in ================= */
-function startExperience() {
-  if (busy) return;
-  busy = true;
+/* ================= intro: letter over dimmed board → zoom in =================
+   The board is visible (dimmed) behind the landing letter from page load;
+   Dive in lifts the letter + dim, then the camera zooms to the start. */
+let started = false;
 
+function primeStage() {
   stage.style.visibility = "visible";
-  // overview: whole board centered, pawn 1 waiting at the start
   const fs = fitScale();
   Object.assign(cam, { s: fs, ...clampCam((vw() - BW * fs) / 2, (vh() - BH * fs) / 2, fs) });
   applyCam();
   positionPawns(); // waiting at startPos, above the first card
   gsap.set(el("pawn-1"), { opacity: 0, scale: 0.4 }); // pawn 2 joins later
-  gsap.set(board, { opacity: 0 });
   gsap.set(deckArea, { opacity: 0 });
+}
+
+function startExperience() {
+  if (busy) return;
+  busy = true;
+  started = true;
 
   const start = startPoint();
   const play = camTargetFor(start.x, start.y, playScale());
@@ -282,19 +287,11 @@ function startExperience() {
   gsap.timeline({
     onComplete: () => { busy = false; promptDeck(); },
   })
-    // anticipation wiggle, lid flies off
-    .to("#introCard", { rotation: -2, duration: 0.08, repeat: 3, yoyo: true }, 0)
-    .to("#introCard", {
-      y: -vh() * 1.2, x: -vw() * 0.12,
-      rotation: -16, rotationX: 28, scale: 1.08,
-      duration: 0.75, ease: "power2.in",
-    }, 0.32)
-    .to(".box-base", { y: 60, opacity: 0, duration: 0.4, ease: "power1.in" }, 0.5)
-    .to(intro, { backgroundColor: "rgba(242,178,27,0)", duration: 0.55 }, 0.55)
-    .to(board, { opacity: 1, duration: 0.5 }, 0.6)
-    .add(() => { intro.style.display = "none"; }, 1.2)
-    // beat on the establishing view…
-    .to({}, { duration: KIT.timing.overviewHold })
+    .to("#introCard", { y: 46, opacity: 0, scale: 0.96, duration: 0.35, ease: "power1.in" }, 0)
+    .to(intro, { backgroundColor: "rgba(5,7,22,0)", duration: 0.5 }, 0.15)
+    .add(() => { intro.style.display = "none"; }, 0.65)
+    // brief beat on the undimmed overview…
+    .to({}, { duration: 0.3 })
     // …zoom to the start of the track; partner pops in mid-zoom
     .add("zoom")
     .to(cam, {
@@ -412,7 +409,9 @@ function closeReveal() {
   }});
 }
 
-/* ================= gift selection ================= */
+/* ================= gift selection =================
+   Card chrome + buttons are baked into Kharisel's art; the whole card is
+   the click target: face-down → flip, face-up → choose. */
 function buildGifts() {
   const row = el("giftRow");
   KIT.gifts.forEach((g) => {
@@ -420,18 +419,12 @@ function buildGifts() {
     card.className = "gift-flip";
     card.dataset.gift = g.name;
     card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-label", g.backAlt);
     card.innerHTML =
       `<div class="gift-flip-inner">
-        <div class="gf-face gf-front">
-          <span class="gf-emoji">${g.emoji}</span>
-          <h4>${g.name}</h4>
-          <p>${g.tagline}</p>
-          <span class="gf-hint">Flip me</span>
-        </div>
-        <div class="gf-face gf-back">
-          <img class="gf-art" src="${g.art}" alt="${g.alt}">
-          <button class="btn btn-primary gf-select" type="button">Choose this gift</button>
-        </div>
+        <img class="gf-face gf-face-down" src="${g.back}" alt="">
+        <img class="gf-face gf-face-up" src="${g.front}" alt="${g.frontAlt}">
       </div>`;
     row.appendChild(card);
   });
@@ -461,17 +454,17 @@ function changeGift() {
 
 function setupGiftCards() {
   document.querySelectorAll(".gift-flip").forEach((card) => {
-    const flip = () => {
+    let flippedAt = 0;
+    const act = () => {
       if (chosenGift || card.classList.contains("disabled")) return;
-      card.classList.toggle("flipped");
-    };
-    card.addEventListener("click", flip);
-    card.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flip(); }
-    });
-    card.querySelector(".gf-select").addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (chosenGift) return;
+      if (!card.classList.contains("flipped")) {
+        card.classList.add("flipped");
+        flippedAt = Date.now();
+        card.setAttribute("aria-label",
+          card.querySelector(".gf-face-up").alt || card.dataset.gift);
+        return;
+      }
+      if (Date.now() - flippedAt < 450) return; // let the flip settle
       chosenGift = card.dataset.gift;
       card.classList.add("chosen");
       document.querySelectorAll(".gift-flip").forEach((other) => {
@@ -485,10 +478,14 @@ function setupGiftCards() {
           gsap.set(giftSelect, { opacity: 1 });
           el("chosenGiftLabel").textContent = chosenGift;
           formOverlay.style.display = "grid";
-          gsap.from(".form-stamp-frame", {
+          gsap.from(".form-frame", {
             scale: 0.4, rotation: 8, opacity: 0, duration: 0.5, ease: "back.out(1.3)",
           });
         });
+    };
+    card.addEventListener("click", act);
+    card.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(); }
     });
   });
 }
@@ -596,6 +593,12 @@ stage.addEventListener("wheel", (e) => {
 window.addEventListener("resize", () => {
   if (stage.style.visibility !== "visible") return;
   positionPawns();
+  if (!started) { // still on the landing letter: keep the overview fit
+    const fs = fitScale();
+    Object.assign(cam, { s: fs, ...clampCam((vw() - BW * fs) / 2, (vh() - BH * fs) / 2, fs) });
+    applyCam();
+    return;
+  }
   const p = currentPawnPoint();
   const s = freeExplore ? cam.s : (drawn === 0 && busy ? cam.s : playScale());
   Object.assign(cam, camTargetFor(p.x, p.y, s));
@@ -606,7 +609,7 @@ window.addEventListener("resize", () => {
 function applyCopy() {
   document.title = KIT.copy.pageTitle;
   el("introHeadline").innerHTML = KIT.copy.introHeadline;
-  el("introSub").textContent = KIT.copy.introSub;
+  el("introBody").innerHTML = KIT.copy.introBody.map((p) => `<p>${p}</p>`).join("");
   el("celebrateBtn").textContent = KIT.copy.introCta;
   el("giftTitle").textContent = KIT.copy.giftTitle;
   el("giftSub").textContent = KIT.copy.giftSub;
@@ -629,6 +632,7 @@ buildBoard();
 buildGifts();
 applyCopy();
 setupGiftCards();
+primeStage(); // board (dimmed) is the landing backdrop
 el("celebrateBtn").addEventListener("click", startExperience);
 deck.addEventListener("click", drawCard);
 deck.addEventListener("keydown", (e) => {

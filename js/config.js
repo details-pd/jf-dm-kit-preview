@@ -18,17 +18,24 @@ const KIT = {
 
   copy: {
     pageTitle: "Every Great Journey",
-    introHeadline: "Every great journey<br>has many little steps.",
-    introSub: "A little something from your friends at Pixel Dreams",
-    introCta: "Let’s celebrate",
+    introHeadline: "Team is everything.",
+    // Kharisel's Aug 14 landing letter — one entry per paragraph
+    introBody: [
+      "Jonny and Kelly,",
+      "Who you have beside you makes a world of difference in the game of life. And boy, do you two make a killer team.",
+      "Your last few years have been full of adventure preparing you for the greatest adventure of all: <strong>Parenthood.</strong>",
+      "As you enter this new chapter, we invite you to take a moment to revisit the moments that made you you, with a little surprise waiting at the end.",
+      "Cheering you on always,<br>The Pixel Dreams Team",
+    ],
+    introCta: "Dive in",
     deckPrompts: [
       "Click the deck to shuffle!",
       "One memory placed — draw again!",
       "Two down — keep going!",
       "One last card…",
     ],
-    giftTitle: "Pick the gift you’d love to receive",
-    giftSub: "Flip each card to peek inside, then choose one.",
+    giftTitle: "Time to Celebrate",
+    giftSub: "We’d love to send you a gift to commemorate this incredible moment in your lives. Browse the options below and choose your favourite.",
     formTitle: "Where should it fly to?",
     formGiftLead: "Your gift:",
     formChangeCta: "change my mind",
@@ -108,28 +115,29 @@ const KIT = {
     },
   ],
 
-  // gift options (Kharisel's redesigned cards pending — art will swap in)
+  // gift options — Kharisel's Aug 14 card designs (chrome + buttons baked
+  // into the art; the whole card is the click target)
   gifts: [
     {
-      name: "Once Upon a Bedtime",
-      emoji: "\u{1F4DA}",
-      tagline: "The beginning of a lifetime of stories.",
-      art: "assets/gift-books.jpg",
-      alt: "A set of children's books with a bookmark that reads: a reader lives a thousand lives",
+      name: "The Rookie Kit",
+      back: "assets/v3/gift-rookie-back.png",
+      front: "assets/v3/gift-rookie-front.png",
+      backAlt: "Face-down gift card with a basketball sticker — flip to reveal",
+      frontAlt: "The Rookie Kit — a Pacers baby tee. Click to choose this gift.",
     },
     {
-      name: "The Days You'll Treasure",
-      emoji: "\u{1F4F8}",
-      tagline: "Preserve the little moments that become the big ones.",
-      art: "assets/gift-keepsake.jpg",
-      alt: "A keepsake memory box with drawers, baby shoes, and blankets",
+      name: "The Highlight Reel",
+      back: "assets/v3/gift-highlight-back.png",
+      front: "assets/v3/gift-highlight-front.png",
+      backAlt: "Face-down gift card with a photo-album sticker — flip to reveal",
+      frontAlt: "The Highlight Reel — a baby photo album. Click to choose this gift.",
     },
     {
-      name: "A Moment Together",
-      emoji: "\u{1F33F}",
-      tagline: "Rest and reconnection during life’s biggest transition.",
-      art: "assets/gift-spa.jpg",
-      alt: "A couple enjoying a relaxing spa day together",
+      name: "The Sixth Man",
+      back: "assets/v3/gift-sixthman-back.png",
+      front: "assets/v3/gift-sixthman-front.png",
+      backAlt: "Face-down gift card with a serving-dish sticker — flip to reveal",
+      frontAlt: "The Sixth Man — a CookUnity gift card. Click to choose this gift.",
     },
   ],
 

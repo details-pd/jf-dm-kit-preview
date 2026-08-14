@@ -4,12 +4,15 @@ and measure baked milestone-card slot transforms."""
 import json, math, os
 from PIL import Image, ImageDraw, ImageFilter
 
-SCRATCH = os.path.dirname(os.path.abspath(__file__))
+SCRATCH = os.getcwd()
+import sys
+PIECES_SRC = sys.argv[1] if len(sys.argv) > 1 else "pieces-2.png"
+BOARD_SRC = sys.argv[2] if len(sys.argv) > 2 else "board-1.png"
 OUT = os.path.join(SCRATCH, "assets")
 os.makedirs(OUT, exist_ok=True)
 
 # ---------- 1. pieces from artboard 2 (RGBA) ----------
-pieces = Image.open(os.path.join(SCRATCH, "pieces-2.png"))
+pieces = Image.open(os.path.join(SCRATCH, PIECES_SRC))
 W, H = pieces.size
 DS = 8
 small = pieces.resize((W // DS, H // DS), Image.NEAREST)
@@ -84,7 +87,7 @@ for row, names in zip(rows, names_by_row):
         report["pieces"][name] = {"size": crop.size}
 
 # ---------- 2. board background from artboard 1 ----------
-board = Image.open(os.path.join(SCRATCH, "board-1.png")).convert("RGB")
+board = Image.open(os.path.join(SCRATCH, BOARD_SRC)).convert("RGB")
 BW, BH = board.size
 S = BW / 1181.0  # display-basis -> render scale
 
@@ -111,7 +114,7 @@ slots_spec = [
     ("signing",  (367, 1245), lambda r,g,b: b > 190 and g > 150 and r < 120),
     ("henry",    (762, 1645), lambda r,g,b: b > 190 and g < 160 and r < 110),
 ]
-orig = Image.open(os.path.join(SCRATCH, "board-1.png")).convert("RGB")
+orig = Image.open(os.path.join(SCRATCH, BOARD_SRC)).convert("RGB")
 D2 = 4
 osm = orig.resize((BW // D2, BH // D2), Image.NEAREST)
 opx = osm.load()
