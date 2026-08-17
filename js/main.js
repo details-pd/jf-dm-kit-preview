@@ -194,49 +194,63 @@ function softFollow(p) { // camera tracks the walking pawns, same zoom
   applyCam();
 }
 
-// walk to an arbitrary board point: step onto the track, travel along it,
-// then step off to the exact anchor (Kharisel dictates per-card anchors)
+// Walk to an arbitrary board point at CONSTANT SPEED. The whole journey —
+// step onto the track, travel along it, step off to the anchor — is one
+// arc-length-parameterized path with a single ease, so the pace never
+// jumps between segments.
 function walkPawnsTo(targetPt, follow, onDone) {
-  const bob = gsap.to(pawnEls(), { rotation: 4, duration: 0.18, repeat: -1, yoyo: true });
+  const bob = gsap.to(pawnEls(), { rotation: 3.5, duration: 0.2, repeat: -1, yoyo: true });
   const from = currentPawnPoint();
   const t0 = TRACK.nearestT(from.x, from.y);
   const t1 = TRACK.nearestT(targetPt.x, targetPt.y);
-  const move = (p) => {
-    pawnPoint = p;
-    renderPawnsAt(p);
-    if (follow) softFollow(p);
+
+  // build the full polyline: on-ramp + track run + off-ramp
+  const pts = [from];
+  const onRamp = TRACK.pointAt(t0);
+  if (Math.hypot(onRamp.x - from.x, onRamp.y - from.y) > 8) pts.push(onRamp);
+  const STEPS = 120;
+  for (let i = 1; i <= STEPS; i++) {
+    pts.push(TRACK.pointAt(t0 + (t1 - t0) * (i / STEPS)));
+  }
+  if (Math.hypot(targetPt.x - pts[pts.length - 1].x,
+                 targetPt.y - pts[pts.length - 1].y) > 8) pts.push(targetPt);
+
+  // cumulative arc length, so progress 0..1 maps to distance travelled
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) {
+    cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
+  }
+  const total = cum[cum.length - 1];
+  const at = (d) => {
+    if (total === 0) return pts[0];
+    let lo = 1, hi = cum.length - 1;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (cum[mid] < d) lo = mid + 1; else hi = mid; }
+    const f = (d - cum[lo - 1]) / (cum[lo] - cum[lo - 1] || 1);
+    return { x: pts[lo - 1].x + (pts[lo].x - pts[lo - 1].x) * f,
+             y: pts[lo - 1].y + (pts[lo].y - pts[lo - 1].y) * f };
   };
 
-  const tl = gsap.timeline({
+  const state = { d: 0 };
+  gsap.to(state, {
+    d: total,
+    // constant board-px per second → every walk feels the same. The floor
+    // is small so a short hop uses that same pace instead of crawling.
+    duration: Math.max(0.35, total / (KIT.timing.walkSpeed * BH)),
+    ease: "power1.inOut", // one gentle accelerate/decelerate for the trip
+    onUpdate: () => {
+      const p = at(state.d);
+      pawnPoint = p;
+      renderPawnsAt(p);
+      if (follow) softFollow(p);
+    },
     onComplete: () => {
       bob.kill();
       gsap.to(pawnEls(), { rotation: 0, duration: 0.15 });
       if (follow) {
-        cameraTo(camTargetFor(targetPt.x, targetPt.y, cam.s), 0.45, "power1.out", onDone);
+        cameraTo(camTargetFor(targetPt.x, targetPt.y, cam.s), 0.4, "power1.out", onDone);
       } else if (onDone) onDone();
     },
   });
-
-  const lerpSeg = (a, b) => {
-    if (Math.hypot(b.x - a.x, b.y - a.y) < 12) return;
-    const st = { f: 0 };
-    tl.to(st, {
-      f: 1, duration: 0.4, ease: "power1.inOut",
-      onUpdate: () => move({ x: a.x + (b.x - a.x) * st.f, y: a.y + (b.y - a.y) * st.f }),
-    });
-  };
-
-  lerpSeg(from, TRACK.pointAt(t0));
-  if (Math.abs(t1 - t0) > 0.002) {
-    const st = { t: t0 };
-    tl.to(st, {
-      t: t1,
-      duration: Math.max(0.7, Math.abs(t1 - t0) / KIT.timing.walkSpeed),
-      ease: "power1.inOut",
-      onUpdate: () => move(TRACK.pointAt(st.t)),
-    });
-  }
-  lerpSeg(TRACK.pointAt(t1), targetPt);
 }
 
 // where the heads stand once milestone i is placed

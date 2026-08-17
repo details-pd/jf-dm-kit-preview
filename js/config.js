@@ -105,7 +105,7 @@ const KIT = {
       yearCard: "assets/v3/year-2018.png?v=2",
       alt: "Memory card: The Team Founding, 2018 — two glasses raised in a toast",
       slot: { cx: 0.2338, cy: 0.2565, w: 0.1977, h: 0.1533, angle: -3.81 },
-      pawnPos: [0.390, 0.406], // below-right of the card
+      pawnPos: [0.315, 0.192], // stops clear of the card text
     },
     {
       id: "contract",
@@ -113,7 +113,7 @@ const KIT = {
       yearCard: "assets/v3/year-2021.png?v=2",
       alt: "Memory card: Contract Talks Begin, 2021 — an engagement ring",
       slot: { cx: 0.6698, cy: 0.3986, w: 0.1956, h: 0.1533, angle: -3.49 },
-      pawnPos: [0.832, 0.516], // below-right of the card
+      pawnPos: [0.414, 0.406], // stops clear of the card text
     },
     {
       id: "signing",
@@ -121,7 +121,7 @@ const KIT = {
       yearCard: "assets/v3/year-2022.png?v=2",
       alt: "Memory card: Signing Day, 2022 — a wedding cake topped with a heart",
       slot: { cx: 0.3092, cy: 0.6211, w: 0.1977, h: 0.1533, angle: -3.07 },
-      pawnPos: [0.477, 0.653], // right of the card
+      pawnPos: [0.536, 0.631], // stops clear of the card text
     },
     {
       id: "henry",
@@ -129,7 +129,7 @@ const KIT = {
       yearCard: "assets/v3/year-2026.png?v=2",
       alt: "Memory card: Henry, Franchise Cornerstone, 2026 — a baby bottle",
       slot: { cx: 0.6298, cy: 0.8406, w: 0.1977, h: 0.1533, angle: 3.54 },
-      pawnPos: [0.432, 0.870], // left of the card
+      pawnPos: [0.377, 0.837], // stops clear of the card text
     },
   ],
 
@@ -179,6 +179,6 @@ const KIT = {
     flyDur: 0.6,          // deck → slot flight of a drawn card
     introZoomDur: 0.85,   // overview → play zoom (glimpse + zoom ≈ 1s total)
     overviewHold: 0.8,    // beat on the establishing shot
-    walkSpeed: 0.10,      // path fraction per second the pawns walk
+    walkSpeed: 0.20,      // board HEIGHTS per second — constant pace
   },
 };

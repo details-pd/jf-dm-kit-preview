@@ -99,12 +99,16 @@ h1, h2, h3, h4, .btn {
   display: inline-block;
   margin-top: 0.5rem;
 }
-/* sparkle stickers (extracted from the .ai) on the card edges */
+/* sparkle stickers (star extracted from the .ai; the white sticker outline
+   is drawn here with stacked drop-shadows rather than baked into the PNG) */
 .sparkle {
   position: absolute;
   width: clamp(28px, 4.5vh, 44px);
   height: auto;
-  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.35));
+  filter:
+    drop-shadow(1.5px 0 0 #fff) drop-shadow(-1.5px 0 0 #fff)
+    drop-shadow(0 1.5px 0 #fff) drop-shadow(0 -1.5px 0 #fff)
+    drop-shadow(0 3px 4px rgba(0, 0, 0, 0.3));
 }
 .sp-1 { top: -30px; right: 56px; }
 .sp-2 { top: 10px; right: -26px; width: clamp(22px, 3.5vh, 34px); transform: rotate(18deg); }
