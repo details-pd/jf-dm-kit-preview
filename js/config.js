@@ -52,16 +52,19 @@ const KIT = {
     thanksTitle: "Your gift is on the way!",
     thanksBody: "Expect it to arrive within two weeks.<br>Congratulations again, Jonny and Kelly.",
     thanksCta: "Back to the board",
-    explorePrompt: "Click a memory to revisit it.",
+    // empty = no bubble in free explore (Waheed, Aug 18); the :empty CSS
+    // rule hides the pill. Set copy here to bring it back for future kits.
+    explorePrompt: "",
   },
 
   board: {
     image: "assets/v3/board-play.jpg?v=3",
     // native design space; all fractions map onto this (w, h)
     size: [1938, 3258],
-    // where the pawns wait before the first draw — on the opening segment,
-    // exactly where the heads sat in Kharisel's Aug 14 board (pre-2018 track)
-    startPos: [0.271, 0.150],
+    // where the pawns wait before the first draw — centered on the BLACK
+    // opening segment (Waheed, Aug 18; the old spot at Kharisel's baked-head
+    // position sat right on the 2018 card's title)
+    startPos: [0.587, 0.122],
     // pawn track — traced along the painted band's centerline, start → finish
     // (verify against the art with tools/ + trackviz when the board changes)
     track: [
@@ -105,7 +108,10 @@ const KIT = {
       yearCard: "assets/v3/year-2018.png?v=2",
       alt: "Memory card: The Team Founding, 2018 — two glasses raised in a toast",
       slot: { cx: 0.2338, cy: 0.2565, w: 0.1977, h: 0.1533, angle: -3.81 },
-      pawnPos: [0.315, 0.192], // stops clear of the card text
+      // on the blue/black segments NE of the card — the only rest spot near
+      // the 2018 card that clears its title AND doesn't collide with the
+      // contract stop below (Waheed, Aug 18: pawns must never sit on text)
+      pawnPos: [0.435, 0.150],
     },
     {
       id: "contract",
@@ -129,7 +135,9 @@ const KIT = {
       yearCard: "assets/v3/year-2026.png?v=2",
       alt: "Memory card: Henry, Franchise Cornerstone, 2026 — a baby bottle",
       slot: { cx: 0.6298, cy: 0.8406, w: 0.1977, h: 0.1533, angle: 3.54 },
-      pawnPos: [0.377, 0.837], // stops clear of the card text
+      // nudged left of the old 0.377 — Kelly's sticker edge was kissing the
+      // card frame (Waheed, Aug 18)
+      pawnPos: [0.365, 0.836],
     },
   ],
 
