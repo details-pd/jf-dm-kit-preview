@@ -12,7 +12,13 @@ def lum(p):
     return 0.299 * p[0] + 0.587 * p[1] + 0.114 * p[2]
 
 def find_cards(path):
-    """3 largest bright components at low res -> padded full-res bboxes."""
+    """Bright components at low res, merged where their bboxes overlap,
+    -> the 3 largest padded full-res card bboxes.
+
+    The merge matters: since the Aug 18 deck the card fronts frame the art
+    in a black border, so the art square and the white card ring read as
+    SEPARATE bright components (and the art square is the bigger one) —
+    taking the 3 largest raw components returns just the art squares."""
     im = Image.open(path).convert("RGB")
     D = 4
     sm = im.resize((im.width // D, im.height // D), Image.NEAREST)
@@ -38,12 +44,25 @@ def find_cards(path):
                     if 0 <= nx < sw and 0 <= ny < sh and not seen[ny][nx] and lum(px[nx, ny]) >= DARK:
                         seen[ny][nx] = True
                         stack.append((nx, ny))
-            comps.append((n, bx0, by0, bx1, by1))
-    comps.sort(reverse=True)
-    boxes = []
-    for n, bx0, by0, bx1, by1 in comps[:3]:
-        boxes.append((max(0, bx0*D-10), max(0, by0*D-10),
-                      min(im.width, (bx1+1)*D+10), min(im.height, (by1+1)*D+10)))
+            if n > 400:  # specks (heading text, stickers) stay out of the merge
+                comps.append([bx0, by0, bx1, by1, n])
+
+    def overlaps(a, b):
+        return not (a[2] < b[0] or b[2] < a[0] or a[3] < b[1] or b[3] < a[1])
+
+    merged = []
+    for c in sorted(comps, key=lambda c: -c[4]):
+        for m in merged:
+            if overlaps(c, m):
+                m[0] = min(m[0], c[0]); m[1] = min(m[1], c[1])
+                m[2] = max(m[2], c[2]); m[3] = max(m[3], c[3])
+                break
+        else:
+            merged.append(c[:4])
+    merged = sorted(merged, key=lambda m: -((m[2]-m[0]) * (m[3]-m[1])))[:3]
+    boxes = [(max(0, m[0]*D-10), max(0, m[1]*D-10),
+              min(im.width, (m[2]+1)*D+10), min(im.height, (m[3]+1)*D+10))
+             for m in merged]
     boxes.sort(key=lambda b: b[0])  # left -> right
     return im, boxes
 

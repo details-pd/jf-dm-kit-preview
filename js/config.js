@@ -139,23 +139,26 @@ const KIT = {
     {
       name: "The Rookie Kit",
       back: "assets/v3/gift-rookie-back.png?v=2",
-      front: "assets/v3/gift-rookie-front.png?v=2",
+      front: "assets/v3/gift-rookie-front.png?v=3",
       backAlt: "Face-down gift card with a basketball sticker — flip to reveal",
-      frontAlt: "The Rookie Kit — a Pacers baby tee. Click to choose this gift.",
+      frontAlt:
+        "The Rookie Kit — a collection of Indiana Pacers–themed baby essentials to welcome the newest little fan. Click to choose this gift.",
     },
     {
       name: "The Highlight Reel",
       back: "assets/v3/gift-highlight-back.png?v=2",
-      front: "assets/v3/gift-highlight-front.png?v=2",
+      front: "assets/v3/gift-highlight-front.png?v=3",
       backAlt: "Face-down gift card with a photo-album sticker — flip to reveal",
-      frontAlt: "The Highlight Reel — a baby photo album. Click to choose this gift.",
+      frontAlt:
+        "The Highlight Reel — items to help preserve the little moments that become the big ones. Click to choose this gift.",
     },
     {
       name: "The Sixth Man",
       back: "assets/v3/gift-sixthman-back.png?v=2",
-      front: "assets/v3/gift-sixthman-front.png?v=2",
+      front: "assets/v3/gift-sixthman-front.png?v=3",
       backAlt: "Face-down gift card with a serving-dish sticker — flip to reveal",
-      frontAlt: "The Sixth Man — a CookUnity gift card. Click to choose this gift.",
+      frontAlt:
+        "The Sixth Man — chef-made CookUnity meals delivered to the door. Click to choose this gift.",
     },
   ],
 
