@@ -164,6 +164,10 @@ h1, h2, h3, h4, .btn {
   object-fit: contain;
 }
 .slot-click, .slot-face { opacity: 0; }
+/* deliberately no transition on these swaps: the year → "Click me" change
+   is announced by the shake, and the swap to the milestone face happens
+   while the card is side-on. A transition would also stall mid-fade on a
+   backgrounded tab, leaving the wrong card face up. */
 .slot.inviting .slot-click { opacity: 1; }
 .slot.filled .slot-face { opacity: 1; }
 .slot.filled .slot-year, .slot.filled .slot-click { opacity: 0; }

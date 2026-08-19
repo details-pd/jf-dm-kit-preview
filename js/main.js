@@ -353,6 +353,7 @@ function primeStage() {
   Object.assign(cam, { s: fs, ...clampCam((vw() - BW * fs) / 2, (vh() - BH * fs) / 2, fs) });
   applyCam();
   positionPawns(); // both of them, waiting together on the red piece
+  showClickCard(0); // reads "Click me" from the very first frame
 }
 
 function startExperience() {
@@ -387,12 +388,19 @@ function startExperience() {
    keep their year until their turn (Sarah, Aug 19). */
 let activeIndex = -1;
 
+// just the art: swap this card's year for the "Click me" face. Split out
+// from inviting so card 1 can already read "Click me" in the establishing
+// shot behind the letter, before anything is clickable (Waheed, Aug 19).
+function showClickCard(i) {
+  el(`slot-${i}`).classList.add("inviting");
+}
+
 function inviteMilestone(i) {
   if (i >= KIT.milestones.length) return;
   activeIndex = i;
   const m = KIT.milestones[i];
   const slot = el(`slot-${i}`);
-  slot.classList.add("inviting");
+  showClickCard(i);
   slot.tabIndex = 0;
   slot.setAttribute("role", "button");
   slot.setAttribute("aria-label", KIT.copy.clickCardAlt);
@@ -426,11 +434,15 @@ function onSlotClick(i) {
   const angle = m.slot.angle;
   const d = KIT.timing.turnDur;
 
+  // stop accepting clicks straight away, but LEAVE the "inviting" class on:
+  // it's what holds the Click me art up. Dropping it here would uncover the
+  // year card underneath for the whole first half of the turn.
   activeIndex = -1;
-  slot.classList.remove("inviting");
   slot.removeAttribute("role");
   slot.removeAttribute("aria-label");
   slot.tabIndex = -1;
+  gsap.killTweensOf(slot);              // a shake may still be running
+  gsap.set(slot, { rotation: angle });
 
   // the start label has done its job the moment they set off
   if (i === 0) gsap.to(startLabel, { opacity: 0, duration: 0.4 });
@@ -448,9 +460,13 @@ function onSlotClick(i) {
       });
     },
   })
-    // turn: half a flip, swap the art at the edge, finish the flip
+    // turn: half a flip, swap the art at the edge (card is invisible
+    // side-on, so the swap is never seen), finish the flip
     .to(slot, { rotationY: 90, duration: d / 2, ease: "power1.in" })
-    .add(() => { slot.classList.add("filled"); })
+    .add(() => {
+      slot.classList.remove("inviting");
+      slot.classList.add("filled");
+    })
     .to(slot, { rotationY: 0, duration: d / 2, ease: "power1.out" })
     .to(slot, { scale: 1.04, yoyo: true, repeat: 1, duration: 0.14 });
 }
