@@ -163,6 +163,8 @@ h1, h2, h3, h4, .btn {
   height: 100%;
   object-fit: contain;
 }
+/* only this wrapper turns; .slot-plate behind it never moves */
+.slot-turn { position: absolute; inset: 0; }
 .slot-click, .slot-face { opacity: 0; }
 /* deliberately no transition on these swaps: the year → "Click me" change
    is announced by the shake, and the swap to the milestone face happens

@@ -47,10 +47,18 @@ function buildBoard() {
     slot.style.top = m.slot.cy * BH - h * 0.52 + "px";
     // GSAP owns the transform so it can add rotationY for the card turn
     gsap.set(slot, { rotation: m.slot.angle, transformPerspective: 900 });
+    // The milestone cards are PAINTED INTO the board art; the overlay
+    // normally hides its baked twin exactly. Turning the overlay
+    // foreshortens it and would uncover that twin — which reads as a
+    // duplicate card — so a blank card sits underneath and stays put,
+    // exactly like turning the top card of a pile.
     slot.innerHTML =
-      `<img class="slot-year" src="${m.yearCard}" alt="">` +
-      `<img class="slot-click" src="${KIT.clickCard}" alt="">` +
-      `<img class="slot-face" src="${m.face}" alt="${m.alt}">`;
+      `<img class="slot-plate" src="${KIT.blankCard}" alt="">` +
+      `<div class="slot-turn">` +
+        `<img class="slot-year" src="${m.yearCard}" alt="">` +
+        `<img class="slot-click" src="${KIT.clickCard}" alt="">` +
+        `<img class="slot-face" src="${m.face}" alt="${m.alt}">` +
+      `</div>`;
     slot.addEventListener("click", () => onSlotClick(i));
     slot.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSlotClick(i); }
@@ -430,6 +438,7 @@ function onSlotClick(i) {
 
   busy = true;
   const slot = el(`slot-${i}`);
+  const turn = slot.querySelector(".slot-turn");
   const m = KIT.milestones[i];
   const angle = m.slot.angle;
   const d = KIT.timing.turnDur;
@@ -461,13 +470,14 @@ function onSlotClick(i) {
     },
   })
     // turn: half a flip, swap the art at the edge (card is invisible
-    // side-on, so the swap is never seen), finish the flip
-    .to(slot, { rotationY: 90, duration: d / 2, ease: "power1.in" })
+    // side-on, so the swap is never seen), finish the flip. Only the inner
+    // wrapper turns — the blank card behind it keeps the baked art covered.
+    .to(turn, { rotationY: 90, duration: d / 2, ease: "power1.in" })
     .add(() => {
       slot.classList.remove("inviting");
       slot.classList.add("filled");
     })
-    .to(slot, { rotationY: 0, duration: d / 2, ease: "power1.out" })
+    .to(turn, { rotationY: 0, duration: d / 2, ease: "power1.out" })
     .to(slot, { scale: 1.04, yoyo: true, repeat: 1, duration: 0.14 });
 }
 

@@ -117,6 +117,9 @@ const KIT = {
 
   // the card art that replaces a year card when that milestone is next up
   clickCard: "assets/v4/card-clickme.png?v=1",
+  // blank card that sits under the turning one, so the milestone card baked
+  // into the board is never uncovered mid-turn
+  blankCard: "assets/v4/card-blank.png?v=1",
 
   // milestones IN ORDER. slot = measured transform of the baked
   // card art on the board (see assets/v3/slots.json — regenerate with
