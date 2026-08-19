@@ -1,13 +1,20 @@
 /* =========================================================
-   Jonny Fruits Baby DM Kit — v3 engine (Aug 13 board)
+   Jonny Fruits Baby DM Kit — v4 engine (Aug 19 board)
    All recipient-specific data comes from js/config.js (KIT).
 
    State machine:
-   intro (game box) → unbox → board OVERVIEW (pawn 1 alone)
-   → zoom to track start (pawn 2 pops in during the zoom)
-   → [deck click: shuffle → reveal popup (dim + X) → close
-      → card lands on slot → pawns walk there, camera follows] ×N
+   intro letter (stars drifting) → board OVERVIEW (both pawns together
+   on the top red piece, "Start the Journey" beside them)
+   → zoom to the start
+   → [the next card says "Click me"; clicking turns it over in place,
+      then the pawns walk to it and the following card invites] ×4
+   → pawns walk to the second-to-last (black) piece, the final blue
+      piece pulses under its "Click for a surprise" pill
    → gift selection → address form → thanks → free explore
+
+   The deck of cards was removed on Aug 19: the board cards are the click
+   targets now (Sarah — it freed the right rail so the board can be framed
+   larger, and it makes the next action obvious).
 
    Camera: the board lives inside a fixed, clipped stage and is
    moved with translate+scale — no page scrolling. This is what
@@ -38,12 +45,41 @@ function buildBoard() {
     slot.style.height = h * 1.04 + "px";
     slot.style.left = m.slot.cx * BW - w * 0.52 + "px";
     slot.style.top = m.slot.cy * BH - h * 0.52 + "px";
-    slot.style.transform = `rotate(${m.slot.angle}deg)`;
+    // GSAP owns the transform so it can add rotationY for the card turn
+    gsap.set(slot, { rotation: m.slot.angle, transformPerspective: 900 });
     slot.innerHTML =
       `<img class="slot-year" src="${m.yearCard}" alt="">` +
+      `<img class="slot-click" src="${KIT.clickCard}" alt="">` +
       `<img class="slot-face" src="${m.face}" alt="${m.alt}">`;
+    slot.addEventListener("click", () => onSlotClick(i));
+    slot.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSlotClick(i); }
+    });
     board.appendChild(slot);
   });
+
+  // "Start the Journey" and the surprise hotspot live in board coordinates
+  const L = KIT.board.startLabel;
+  const label = el("startLabel");
+  label.src = L.img;
+  label.alt = KIT.copy.startLabelAlt;
+  label.style.left = L.x * BW + "px";
+  label.style.top = L.y * BH + "px";
+  label.style.width = L.w * BW + "px";
+
+  const S = KIT.board.surprise;
+  const hit = el("surpriseHit");
+  hit.style.left = S.hit.x * BW + "px";
+  hit.style.top = S.hit.y * BH + "px";
+  hit.style.width = S.hit.w * BW + "px";
+  hit.style.height = S.hit.h * BH + "px";
+  hit.setAttribute("aria-label", KIT.copy.surpriseAlt);
+
+  const glow = el("surpriseGlow");
+  const gr = S.glow.r * BW;
+  glow.style.left = S.glow.x * BW - gr + "px";
+  glow.style.top = S.glow.y * BH - gr + "px";
+  glow.style.width = glow.style.height = gr * 2 + "px";
 
   // pawns are anchored individually (feet on the track); no shared layout,
   // so a lone first pawn stands dead-center on the line
@@ -160,15 +196,8 @@ function cameraTo(target, dur, ease, onDone) {
   });
 }
 
-// deck matches the on-screen size of the cards on the board (Kharisel)
-function sizeDeck() {
-  const w = KIT.milestones[0].slot.w * BW * playScale();
-  el("deckArea").style.width = Math.round(w) + "px";
-}
-
 /* ================= pawns ================= */
 let pawnPoint = null; // current feet anchor in board px (null = at startPos)
-let partnerJoined = false; // second head pops in during the intro zoom
 
 const startPoint = () => ({
   x: KIT.board.startPos[0] * BW,
@@ -177,9 +206,10 @@ const startPoint = () => ({
 const currentPawnPoint = () => pawnPoint || startPoint();
 
 function renderPawnsAt(p) {
-  // alone: dead-center; couple: side by side with a little air between
+  // both of them, side by side with a little air between, from the very
+  // first frame (Waheed, Aug 19 — Kelly no longer joins during the zoom)
   const s = KIT.pawnSpread;
-  const offs = partnerJoined ? [-s, s] : [0, 0];
+  const offs = [-s, s];
   pawnEls().forEach((e, i) => {
     const w = KIT.pawns[i].widthFrac * BW;
     gsap.set(e, { left: p.x + offs[i] * w + "px", top: p.y + "px" });
@@ -274,9 +304,9 @@ const reveal = el("reveal");
 const revealCard = el("revealCard");
 const revealInner = el("revealInner");
 const revealClose = el("revealClose");
-const deck = el("deck");
-const deckArea = el("deckArea");
-const deckBubble = el("deckBubble");
+const startLabel = el("startLabel");
+const surpriseHit = el("surpriseHit");
+const surpriseGlow = el("surpriseGlow");
 const giftSelect = el("giftSelect");
 const formOverlay = el("form");
 const claimForm = el("claimForm");

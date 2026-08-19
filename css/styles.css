@@ -110,9 +110,30 @@ h1, h2, h3, h4, .btn {
     drop-shadow(0 1.5px 0 #fff) drop-shadow(0 -1.5px 0 #fff)
     drop-shadow(0 3px 4px rgba(0, 0, 0, 0.3));
 }
-.sp-1 { top: -30px; right: 56px; }
-.sp-2 { top: 10px; right: -26px; width: clamp(22px, 3.5vh, 34px); transform: rotate(18deg); }
-.sp-3 { left: -28px; top: 46%; width: clamp(20px, 3.2vh, 30px); transform: rotate(-12deg); }
+.sp-1 { top: -30px; right: 56px; animation: twinkle-1 4.2s ease-in-out infinite; }
+.sp-2 { top: 10px; right: -26px; width: clamp(22px, 3.5vh, 34px); animation: twinkle-2 5.1s ease-in-out infinite 0.4s; }
+.sp-3 { left: -28px; top: 46%; width: clamp(20px, 3.2vh, 30px); animation: twinkle-3 4.7s ease-in-out infinite 0.9s; }
+
+/* Sarah, Aug 19: the stars only popped in on load and "nobody refreshes" —
+   so they drift and twinkle for as long as the letter is up. Each has its
+   own period and base rotation so they never move in lockstep. */
+@keyframes twinkle-1 {
+  0%, 100% { transform: translateY(0)     rotate(0deg)   scale(1);    opacity: 1; }
+  50%      { transform: translateY(-7px)  rotate(14deg)  scale(1.12); opacity: 0.86; }
+}
+@keyframes twinkle-2 {
+  0%, 100% { transform: translateY(0)     rotate(18deg)  scale(1);    opacity: 0.92; }
+  50%      { transform: translateY(6px)   rotate(4deg)   scale(1.16); opacity: 1; }
+}
+@keyframes twinkle-3 {
+  0%, 100% { transform: translateY(0)     rotate(-12deg) scale(1);    opacity: 1; }
+  50%      { transform: translateY(-5px)  rotate(-26deg) scale(0.9);  opacity: 0.8; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sp-1, .sp-2, .sp-3 { animation: none; }
+  .sp-2 { transform: rotate(18deg); }
+  .sp-3 { transform: rotate(-12deg); }
+}
 
 /* ============ stage + board (camera-driven) ============ */
 .stage {
@@ -131,7 +152,9 @@ h1, h2, h3, h4, .btn {
 }
 
 /* milestone slots: DOM overlays sized/rotated to the measured baked
-   card art. The year card shows first; the drawn face covers it. */
+   card art. Three stacked layers — the year card, the "Click me" card
+   that replaces it when this milestone is next up (Aug 19), and the
+   milestone face that the card turns over to reveal. */
 .slot { position: absolute; z-index: 3; }
 .slot img {
   position: absolute;
@@ -140,9 +163,50 @@ h1, h2, h3, h4, .btn {
   height: 100%;
   object-fit: contain;
 }
-.slot-face { opacity: 0; }
-.slot.filled .slot-face { opacity: 1; transition: opacity 250ms ease; }
-.slot.filled { cursor: pointer; }
+.slot-click, .slot-face { opacity: 0; }
+.slot.inviting .slot-click { opacity: 1; }
+.slot.filled .slot-face { opacity: 1; }
+.slot.filled .slot-year, .slot.filled .slot-click { opacity: 0; }
+/* the deck is gone: the cards themselves are what you click */
+.slot.inviting, .slot.filled { cursor: pointer; }
+.slot.inviting:focus-visible, .slot.filled:focus-visible {
+  outline: 4px solid var(--blue);
+  outline-offset: 6px;
+  border-radius: 10px;
+}
+
+/* "Start the Journey" — Kharisel's artwork, lifted out of the board so it
+   can sit clear of the couple and fade once they set off */
+.start-label {
+  position: absolute;
+  z-index: 5;
+  height: auto;
+  pointer-events: none;
+}
+
+/* the final blue piece: pulses once the last milestone is turned. The
+   "Click for a surprise" pill under it is painted into the board art. */
+.surprise-glow {
+  position: absolute;
+  z-index: 2;
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  background: radial-gradient(closest-side,
+    rgba(255, 215, 106, 0.95), rgba(255, 176, 32, 0.45) 55%, rgba(255, 176, 32, 0) 78%);
+}
+.surprise-hit {
+  position: absolute;
+  z-index: 6;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  display: none;
+  cursor: pointer;
+  border-radius: 999px;
+}
+.surprise-hit.on { display: block; }
+.surprise-hit:focus-visible { outline: 4px solid var(--blue); outline-offset: 4px; }
 
 /* pawns: sticker heads, feet anchored on the track by JS */
 .pawn {
@@ -154,52 +218,9 @@ h1, h2, h3, h4, .btn {
   filter: drop-shadow(0 6px 8px rgba(5, 7, 22, 0.28));
 }
 
-/* ============ deck (viewport-pinned) ============ */
-.deck-area {
-  position: fixed;
-  right: 3%;
-  bottom: 4%;
-  width: 140px; /* fallback — JS sizes it to match the board cards */
-  z-index: 40;
-  opacity: 0;
-}
-.speech-bubble {
-  position: relative;
-  background: var(--cream);
-  border: 3px solid var(--ink);
-  border-radius: 14px;
-  padding: 0.6em 0.9em;
-  font-weight: 700;
-  font-size: clamp(0.72rem, 1.6vmin, 0.95rem);
-  text-align: center;
-  margin-bottom: 14px;
-  box-shadow: 0 3px 0 var(--ink);
-}
-.speech-bubble:empty { display: none; }
-.speech-bubble::after {
-  content: "";
-  position: absolute;
-  bottom: -12px;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 6px solid transparent;
-  border-top-color: var(--ink);
-}
-.deck {
-  position: relative;
-  aspect-ratio: 764 / 988; /* the card-back export's ratio */
-  cursor: pointer;
-}
-.deck:focus-visible { outline: 4px solid var(--blue); outline-offset: 4px; border-radius: 12px; }
-.deck-card {
-  position: absolute;
-  inset: 0;
-  border-radius: 10px;
-  background: url("../assets/v3/card-back.png?v=2") center / contain no-repeat;
-}
-.dc-3 { transform: translate(8px, 10px) rotate(4deg);  }
-.dc-2 { transform: translate(4px, 5px)  rotate(-3deg); }
-.dc-1 { transform: translate(1px, 2px)  rotate(1deg);  }
+/* (the viewport-pinned deck was removed Aug 19 — the board cards are the
+   click targets now, which also frees the right rail so the board can be
+   framed larger) */
 
 /* ============ card reveal popup ============ */
 .reveal-overlay {
