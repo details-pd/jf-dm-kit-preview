@@ -189,11 +189,13 @@ h1, h2, h3, h4, .btn {
 .surprise-glow {
   position: absolute;
   z-index: 2;
-  border-radius: 50%;
+  border-radius: 999px;
   opacity: 0;
   pointer-events: none;
-  background: radial-gradient(closest-side,
-    rgba(255, 215, 106, 0.95), rgba(255, 176, 32, 0.45) 55%, rgba(255, 176, 32, 0) 78%);
+  background: transparent; /* never tint the pill underneath */
+  box-shadow:
+    0 0 0 10px rgba(255, 215, 106, 0.85),
+    0 0 46px 18px rgba(255, 176, 32, 0.75);
 }
 .surprise-hit {
   position: absolute;

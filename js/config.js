@@ -83,8 +83,9 @@ const KIT = {
     surprise: {
       // click target, generous enough for a thumb on a phone
       hit: { x: 0.706, y: 0.912, w: 0.246, h: 0.082 },
-      // the glow that pulses on the piece — centred on the baked pill
-      glow: { x: 0.826, y: 0.9506, r: 0.20 },
+      // the pulse is a ring drawn just OUTSIDE the baked pill: the pill is
+      // painted into the board, so anything laid over it washes the red out
+      ring: { x: 0.7115, y: 0.9385, w: 0.2290, h: 0.0290 },
     },
 
     // pawn track — traced along the painted band's centerline, start → finish

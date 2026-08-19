@@ -76,10 +76,10 @@ function buildBoard() {
   hit.setAttribute("aria-label", KIT.copy.surpriseAlt);
 
   const glow = el("surpriseGlow");
-  const gr = S.glow.r * BW;
-  glow.style.left = S.glow.x * BW - gr + "px";
-  glow.style.top = S.glow.y * BH - gr + "px";
-  glow.style.width = glow.style.height = gr * 2 + "px";
+  glow.style.left = S.ring.x * BW + "px";
+  glow.style.top = S.ring.y * BH + "px";
+  glow.style.width = S.ring.w * BW + "px";
+  glow.style.height = S.ring.h * BH + "px";
 
   // pawns are anchored individually (feet on the track); no shared layout,
   // so a lone first pawn stands dead-center on the line
@@ -186,6 +186,35 @@ function clampCam(x, y, s) {
 // camera target that frames board point (bx,by) at viewport center
 function camTargetFor(bx, by, s) {
   return { s, ...clampCam(vw() / 2 - bx * s, vh() / 2 - by * s, s) };
+}
+
+/* Frame a whole board rectangle: play zoom if it fits, otherwise pull back
+   just far enough. This is what keeps the couple AND the card they're being
+   asked to click on screen together — on a phone the two are far enough
+   apart that play zoom alone would push the card off the left edge. */
+function frameBox(x0, y0, x1, y1) {
+  const fit = Math.min(vw() / (x1 - x0), vh() / (y1 - y0)) * 0.92;
+  return camTargetFor((x0 + x1) / 2, (y0 + y1) / 2, Math.min(playScale(), fit));
+}
+
+// the pair's on-board footprint around a feet anchor
+function pawnBox(p) {
+  const w = Math.max(...KIT.pawns.map((q) => q.widthFrac)) * BW;
+  const h = w * 1.25; // heads are ~1.25× as tall as they are wide
+  const half = KIT.pawnSpread * w + w / 2;
+  return [p.x - half, p.y - 0.85 * h, p.x + half, p.y + 0.25 * h];
+}
+
+function slotBox(slot) {
+  const w = slot.w * BW * 1.04, h = slot.h * BH * 1.04;
+  return [slot.cx * BW - w / 2, slot.cy * BH - h / 2,
+          slot.cx * BW + w / 2, slot.cy * BH + h / 2];
+}
+
+function frameActorAnd(box) {
+  const a = pawnBox(currentPawnPoint());
+  return frameBox(Math.min(a[0], box[0]), Math.min(a[1], box[1]),
+                  Math.max(a[2], box[2]), Math.max(a[3], box[3]));
 }
 
 function cameraTo(target, dur, ease, onDone) {
@@ -323,10 +352,7 @@ function primeStage() {
   const fs = fitScale();
   Object.assign(cam, { s: fs, ...clampCam((vw() - BW * fs) / 2, (vh() - BH * fs) / 2, fs) });
   applyCam();
-  positionPawns(); // waiting at startPos, above the first card
-  gsap.set(el("pawn-1"), { opacity: 0, scale: 0.4 }); // pawn 2 joins later
-  gsap.set(deckArea, { opacity: 0 });
-  sizeDeck();
+  positionPawns(); // both of them, waiting together on the red piece
 }
 
 function startExperience() {
@@ -334,11 +360,13 @@ function startExperience() {
   busy = true;
   started = true;
 
-  const start = startPoint();
-  const play = camTargetFor(start.x, start.y, playScale());
+  // land on a view that holds both the couple and the first card, so the
+  // thing they're asked to click is on screen from the very first frame
+  const play = frameActorAnd(slotBox(KIT.milestones[0].slot));
 
   gsap.timeline({
-    onComplete: () => { busy = false; promptDeck(); },
+    // the first card starts inviting once we've landed on the start
+    onComplete: () => { busy = false; inviteMilestone(0); },
   })
     .to("#introCard", { y: 46, opacity: 0, scale: 0.96, duration: 0.35, ease: "power1.in" }, 0)
     .to(intro, { backgroundColor: "rgba(5,7,22,0)", duration: 0.5 }, 0.15)
@@ -350,98 +378,126 @@ function startExperience() {
       duration: KIT.timing.introZoomDur, ease: "power2.inOut",
       onUpdate: applyCam,
     })
-    // Kelly and the deck pop up AFTER the zoom, not during (Kharisel)
-    .add(() => { partnerJoined = true; positionPawns(); })
-    .to(el("pawn-1"), { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2.2)" })
-    .to(deckArea, { opacity: 1, duration: 0.4 }, "<")
     .to(pawnEls(), { scale: 1.06, yoyo: true, repeat: 1, duration: 0.15 }, ">-0.05");
 }
 
-/* ================= deck prompt =================
-   Copy only before the first draw and after the last placement
-   ("Click for a surprise"); in between the shake is the reminder. */
-function promptDeck() {
-  if (drawn > KIT.milestones.length) return;
-  const prompts = KIT.copy.deckPrompts;
-  deckBubble.textContent = prompts[Math.min(drawn, prompts.length - 1)] || "";
-  gsap.fromTo(deck, { rotation: -3 }, {
-    rotation: 3, duration: 0.12, repeat: 7, yoyo: true,
-    onComplete: () => gsap.set(deck, { rotation: 0 }),
-  });
-  gsap.fromTo(deck,
-    { filter: "drop-shadow(0 0 0px rgba(255,215,106,0))" },
-    { filter: "drop-shadow(0 0 22px rgba(255,215,106,0.95))",
-      duration: 0.45, repeat: 5, yoyo: true,
-      onComplete: () => gsap.set(deck, { filter: "none" }) });
+/* ================= "Click me" invitation =================
+   Exactly one card is live at a time: its year swaps for Kharisel's
+   "Click me" card, and it shakes to say so. Cards further down the board
+   keep their year until their turn (Sarah, Aug 19). */
+let activeIndex = -1;
+
+function inviteMilestone(i) {
+  if (i >= KIT.milestones.length) return;
+  activeIndex = i;
+  const m = KIT.milestones[i];
+  const slot = el(`slot-${i}`);
+  slot.classList.add("inviting");
+  slot.tabIndex = 0;
+  slot.setAttribute("role", "button");
+  slot.setAttribute("aria-label", KIT.copy.clickCardAlt);
+  // bring the card into view alongside the couple, then invite the click
+  cameraTo(frameActorAnd(slotBox(m.slot)), 0.7, "power2.inOut",
+    () => shake(slot, m.slot.angle));
 }
 
-/* ================= draw: card flies from the deck, lies flat on its slot =================
-   No shuffle, no popup, no X (Waheed, Aug 13 PM): clicking the deck sends
-   the card straight to its board position, flipping face-up mid-flight. */
-let surpriseShown = false;
+function shake(elm, angle) {
+  gsap.fromTo(elm, { rotation: angle - 2.5 }, {
+    rotation: angle + 2.5, duration: 0.12, repeat: 7, yoyo: true,
+    onComplete: () => gsap.set(elm, { rotation: angle }),
+  });
+}
 
-function drawCard() {
-  if (busy || freeExplore) return;
-  if (drawn >= KIT.milestones.length) {
-    // final deck click = the surprise (Kharisel, Aug 14)
-    if (surpriseShown) return;
-    surpriseShown = true;
-    busy = true;
-    deckBubble.textContent = "";
-    showGiftSelect();
+/* ================= turning a card over =================
+   The deck is gone, so the card that's already on the board is the thing
+   you click: it turns over in place to reveal the milestone, then the
+   couple walks to it and the next card starts inviting. */
+function onSlotClick(i) {
+  if (dragMoved) return;
+  if (freeExplore) { // revisit popup once the game is over
+    if (el(`slot-${i}`).classList.contains("filled")) showReveal(i);
     return;
   }
+  if (busy || i !== activeIndex) return;
+
   busy = true;
-  deckBubble.textContent = "";
+  const slot = el(`slot-${i}`);
+  const m = KIT.milestones[i];
+  const angle = m.slot.angle;
+  const d = KIT.timing.turnDur;
 
-  const index = drawn;
-  const m = KIT.milestones[index];
-  const slotEl = el(`slot-${index}`);
+  activeIndex = -1;
+  slot.classList.remove("inviting");
+  slot.removeAttribute("role");
+  slot.removeAttribute("aria-label");
+  slot.tabIndex = -1;
 
-  el("revealImg").src = m.face;
-  el("revealImg").alt = m.alt;
-  gsap.set(revealClose, { opacity: 0, scale: 0.4, pointerEvents: "none" });
-  gsap.set(revealInner, { rotationY: 0 }); // back showing
-  reveal.classList.add("fly-mode"); // transparent, click-through
-  reveal.style.display = "grid";
-  gsap.set(reveal, { opacity: 1 });
+  // the start label has done its job the moment they set off
+  if (i === 0) gsap.to(startLabel, { opacity: 0, duration: 0.4 });
 
-  const card = revealCard.getBoundingClientRect(); // centered, natural size
-  const from = deck.getBoundingClientRect();
-  const target = slotEl.getBoundingClientRect();
-  const d = KIT.timing.flyDur;
-
-  gsap.set(revealCard, {
-    x: from.left + from.width / 2 - (card.left + card.width / 2),
-    y: from.top + from.height / 2 - (card.top + card.height / 2),
-    scale: from.width / card.width,
-    rotation: 0,
-  });
   gsap.timeline({
     onComplete: () => {
-      slotEl.classList.add("filled");
-      reveal.style.display = "none";
-      reveal.classList.remove("fly-mode");
-      gsap.set(revealCard, { x: 0, y: 0, scale: 1, rotation: 0 });
       drawn += 1;
-
-      walkPawnsTo(milestoneAnchor(index), true, () => {
-        // after the last placement the deck invites one more click
-        // ("Click for a surprise") instead of auto-opening the gifts
+      walkPawnsTo(milestoneAnchor(i), true, () => {
         busy = false;
-        promptDeck();
+        if (i + 1 < KIT.milestones.length) {
+          gsap.delayedCall(KIT.timing.nextPrompt, () => inviteMilestone(i + 1));
+        } else {
+          finishJourney();
+        }
       });
     },
   })
-    .to(revealCard, {
-      x: target.left + target.width / 2 - (card.left + card.width / 2),
-      y: target.top + target.height / 2 - (card.top + card.height / 2),
-      scale: target.width / card.width,
-      rotation: m.slot.angle,
-      duration: d,
-      ease: "power2.inOut",
-    }, 0)
-    .to(revealInner, { rotationY: 180, duration: d * 0.8, ease: "power2.inOut" }, 0);
+    // turn: half a flip, swap the art at the edge, finish the flip
+    .to(slot, { rotationY: 90, duration: d / 2, ease: "power1.in" })
+    .add(() => { slot.classList.add("filled"); })
+    .to(slot, { rotationY: 0, duration: d / 2, ease: "power1.out" })
+    .to(slot, { scale: 1.04, yoyo: true, repeat: 1, duration: 0.14 });
+}
+
+/* ================= the end of the board =================
+   After the last milestone they walk on to the second-to-last (black)
+   piece, and the final blue piece pulses under its baked
+   "Click for a surprise" pill (Waheed, Aug 19). */
+let surpriseShown = false;
+
+function finishJourney() {
+  busy = true;
+  const end = {
+    x: KIT.board.endPos[0] * BW,
+    y: KIT.board.endPos[1] * BH,
+  };
+  walkPawnsTo(end, true, () => {
+    busy = false;
+    armSurprise();
+  });
+}
+
+function armSurprise() {
+  // hold the couple and the pill in one frame
+  const R = KIT.board.surprise.ring;
+  cameraTo(frameActorAnd([R.x * BW, R.y * BH,
+                          (R.x + R.w) * BW, (R.y + R.h) * BH]), 0.6, "power2.inOut");
+  surpriseHit.classList.add("on");
+  gsap.killTweensOf(surpriseGlow);
+  gsap.fromTo(surpriseGlow,
+    { opacity: 0.25, scale: 0.99 },
+    { opacity: 1, scale: 1.03, duration: 0.75, repeat: -1, yoyo: true,
+      ease: "sine.inOut", transformOrigin: "50% 50%" });
+}
+
+function disarmSurprise() {
+  surpriseHit.classList.remove("on");
+  gsap.killTweensOf(surpriseGlow);
+  gsap.set(surpriseGlow, { opacity: 0 });
+}
+
+function openSurprise() {
+  if (busy || surpriseShown || freeExplore) return;
+  surpriseShown = true;
+  busy = true;
+  disarmSurprise();
+  showGiftSelect();
 }
 
 // revisit popup (free explore only): dimmed backdrop, X / ESC to close
@@ -469,7 +525,7 @@ function closeReveal() {
   }});
 }
 
-// gift-screen exit (Kharisel): back to the board; the deck re-invites
+// gift-screen exit (Kharisel): back to the board; the final piece re-invites
 function closeGiftSelect() {
   if (chosenGift) return;
   gsap.to(giftSelect, { opacity: 0, duration: 0.3, onComplete: () => {
@@ -477,7 +533,7 @@ function closeGiftSelect() {
     gsap.set(giftSelect, { opacity: 1 });
     surpriseShown = false;
     busy = false;
-    promptDeck();
+    armSurprise(); // the piece keeps pulsing until they take the gift
   }});
 }
 
@@ -620,13 +676,16 @@ function showThanks() {
 function startFreeExplore() {
   thanks.style.display = "none";
   freeExplore = true;
-  deckBubble.textContent = KIT.copy.explorePrompt;
+  disarmSurprise(); // the gift is claimed; stop inviting the click
 
+  // the slots already carry a click handler from buildBoard — onSlotClick
+  // routes to the revisit popup once freeExplore is on. Just make them
+  // reachable by keyboard again.
   document.querySelectorAll(".slot.filled").forEach((slot) => {
-    slot.addEventListener("click", () => {
-      if (dragMoved) return;
-      showReveal(Number(slot.dataset.index));
-    });
+    slot.tabIndex = 0;
+    slot.setAttribute("role", "button");
+    slot.setAttribute("aria-label",
+      slot.querySelector(".slot-face").alt || "Revisit this milestone");
   });
   // ease out to a view of the whole journey
   const fs = Math.max(fitScale(), playScale() * 0.55);
@@ -666,7 +725,6 @@ stage.addEventListener("wheel", (e) => {
 window.addEventListener("resize", () => {
   if (stage.style.visibility !== "visible") return;
   positionPawns();
-  sizeDeck();
   if (!started) { // still on the landing letter: keep the overview fit
     const fs = fitScale();
     Object.assign(cam, { s: fs, ...clampCam((vw() - BW * fs) / 2, (vh() - BH * fs) / 2, fs) });
@@ -674,7 +732,7 @@ window.addEventListener("resize", () => {
     return;
   }
   const p = currentPawnPoint();
-  const s = freeExplore ? cam.s : (drawn === 0 && busy ? cam.s : playScale());
+  const s = freeExplore ? cam.s : (busy ? cam.s : playScale());
   Object.assign(cam, camTargetFor(p.x, p.y, s));
   applyCam();
 });
@@ -714,18 +772,18 @@ gsap.from(".sparkle", {
   stagger: 0.12, delay: 0.5,
 });
 el("celebrateBtn").addEventListener("click", startExperience);
-deck.addEventListener("click", drawCard);
-deck.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); drawCard(); }
-});
+surpriseHit.addEventListener("click", openSurprise);
 revealClose.addEventListener("click", closeReveal);
 el("giftClose").addEventListener("click", closeGiftSelect);
-// ESC works like the X buttons
+// ESC works like the X buttons — including out of the form, which had no
+// keyboard exit at all before (Sarah, Aug 19)
 window.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   if (getComputedStyle(reveal).display !== "none" &&
       revealClose.style.pointerEvents === "auto") {
     closeReveal();
+  } else if (getComputedStyle(formOverlay).display !== "none") {
+    changeGift(); // back to the gift picker, same as "Change my mind"
   } else if (getComputedStyle(giftSelect).display !== "none") {
     closeGiftSelect();
   }
