@@ -204,6 +204,11 @@ const KIT = {
     cardHeight: 0.34,
     cardMaxWidth: 0.78,
     boardMaxWidth: 1.6,
+    // how much of the viewport a "keep both of these in shot" framing may
+    // fill. Phones get more margin so a card never sits against the edge
+    // while the couple walks to it (Waheed, Aug 20).
+    framePad: 0.92,
+    framePadMobile: 0.84,
   },
 
   // animation pacing (Sarah asked for snappier transitions, Aug 13)

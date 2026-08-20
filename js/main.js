@@ -201,7 +201,10 @@ function camTargetFor(bx, by, s) {
    asked to click on screen together — on a phone the two are far enough
    apart that play zoom alone would push the card off the left edge. */
 function frameBox(x0, y0, x1, y1) {
-  const fit = Math.min(vw() / (x1 - x0), vh() / (y1 - y0)) * 0.92;
+  // more margin on phones: the box fills most of a small screen, and with
+  // only 0.92 the card sat right against the edge (Waheed, Aug 20)
+  const pad = vw() < 600 ? KIT.camera.framePadMobile : KIT.camera.framePad;
+  const fit = Math.min(vw() / (x1 - x0), vh() / (y1 - y0)) * pad;
   return camTargetFor((x0 + x1) / 2, (y0 + y1) / 2, Math.min(playScale(), fit));
 }
 
@@ -254,10 +257,21 @@ function renderPawnsAt(p) {
 }
 function positionPawns() { renderPawnsAt(currentPawnPoint()); }
 
-function softFollow(p) { // camera tracks the walking pawns, same zoom
-  const c = camTargetFor(p.x, p.y, cam.s);
+/* Camera follow during a walk. It tracks the couple AND whatever they're
+   walking towards, easing the zoom as well as the position — on a phone the
+   two are often further apart than a play-zoom screenful, and centring on
+   the couple alone (what this used to do) slid the card off the edge
+   mid-walk (Waheed, Aug 20). */
+function softFollow(p, keepBox) {
+  const a = pawnBox(p);
+  const box = keepBox
+    ? [Math.min(a[0], keepBox[0]), Math.min(a[1], keepBox[1]),
+       Math.max(a[2], keepBox[2]), Math.max(a[3], keepBox[3])]
+    : a;
+  const c = frameBox(box[0], box[1], box[2], box[3]);
   cam.x += (c.x - cam.x) * 0.12;
   cam.y += (c.y - cam.y) * 0.12;
+  cam.s += (c.s - cam.s) * 0.12;
   applyCam();
 }
 
@@ -265,7 +279,8 @@ function softFollow(p) { // camera tracks the walking pawns, same zoom
 // step onto the track, travel along it, step off to the anchor — is one
 // arc-length-parameterized path with a single ease, so the pace never
 // jumps between segments.
-function walkPawnsTo(targetPt, follow, onDone) {
+function walkPawnsTo(targetPt, keepBox, onDone) {
+  const follow = !!keepBox;
   const bob = gsap.to(pawnEls(), { rotation: 3.5, duration: 0.2, repeat: -1, yoyo: true });
   const from = currentPawnPoint();
   const t0 = TRACK.nearestT(from.x, from.y);
@@ -308,13 +323,17 @@ function walkPawnsTo(targetPt, follow, onDone) {
       const p = at(state.d);
       pawnPoint = p;
       renderPawnsAt(p);
-      if (follow) softFollow(p);
+      if (follow) softFollow(p, keepBox);
     },
     onComplete: () => {
       bob.kill();
       gsap.to(pawnEls(), { rotation: 0, duration: 0.15 });
       if (follow) {
-        cameraTo(camTargetFor(targetPt.x, targetPt.y, cam.s), 0.4, "power1.out", onDone);
+        // settle on the same couple-plus-target framing, not just the couple
+        const a = pawnBox(targetPt);
+        cameraTo(frameBox(Math.min(a[0], keepBox[0]), Math.min(a[1], keepBox[1]),
+                          Math.max(a[2], keepBox[2]), Math.max(a[3], keepBox[3])),
+                 0.4, "power1.out", onDone);
       } else if (onDone) onDone();
     },
   });
@@ -459,7 +478,8 @@ function onSlotClick(i) {
   gsap.timeline({
     onComplete: () => {
       drawn += 1;
-      walkPawnsTo(milestoneAnchor(i), true, () => {
+      // keep the card they just turned fully in shot for the whole walk
+      walkPawnsTo(milestoneAnchor(i), slotBox(m.slot), () => {
         busy = false;
         if (i + 1 < KIT.milestones.length) {
           gsap.delayedCall(KIT.timing.nextPrompt, () => inviteMilestone(i + 1));
@@ -493,7 +513,8 @@ function finishJourney() {
     x: KIT.board.endPos[0] * BW,
     y: KIT.board.endPos[1] * BH,
   };
-  walkPawnsTo(end, true, () => {
+  const R = KIT.board.surprise.ring;
+  walkPawnsTo(end, [R.x * BW, R.y * BH, (R.x + R.w) * BW, (R.y + R.h) * BH], () => {
     busy = false;
     armSurprise();
   });
