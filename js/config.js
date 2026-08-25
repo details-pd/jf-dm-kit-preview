@@ -10,12 +10,15 @@
    - track: waypoints in board fractions; main.js smooths them
      into a path (Catmull-Rom), pawns travel along it
 
-   NOTE ON Y VALUES (Aug 19): the board art is Kharisel's artboard with
-   360 render-px of cream inserted under the top frame, so the couple can
-   stand on the top red piece without their heads running off the board
-   (tools/build-board-v4.py). Every y below is therefore the artboard
-   value mapped through y' = (y * 6516 + 360) / 6876. Re-run that tool if
-   the artboard changes; it prints these numbers.
+   NOTE ON Y VALUES: the board art is Kharisel's artboard with 110
+   render-px of cream inserted under the top frame, so the couple can stand
+   on the top red piece without their heads running off the board
+   (tools/build-board-v4.py). Every y below is therefore the artboard value
+   mapped through y' = (y * 6516 + 110) / 6626. Re-run that tool if the
+   artboard changes; it prints these numbers. The pad was 360 until Sarah
+   asked for the gap above the board tiles to be closed (Aug 20) — 110 is
+   the minimum that still clears Kelly's hair, helped by starting the couple
+   lower on the red piece.
    ========================================================= */
 
 const KIT = {
@@ -56,15 +59,15 @@ const KIT = {
   },
 
   board: {
-    image: "assets/v4/board-play.jpg?v=1",
+    image: "assets/v4/board-play.jpg?v=2",
     // native design space; all fractions map onto this (w, h)
-    size: [1938, 3438],
+    size: [1938, 3313],
     // the couple waits together on the TOP RED piece (Waheed, Aug 19)
-    startPos: [0.777, 0.1177],
+    startPos: [0.740, 0.1002],
     // where they end up after the last milestone: the second-to-last
     // (black) piece. Sits high enough on that piece that their heads stay
     // clear of the baked "Click for a surprise" pill below them.
-    endPos: [0.778, 0.902],
+    endPos: [0.778, 0.8983],
 
     // "Start the Journey" — Kharisel bakes this into the artboard, but it
     // lands exactly where the couple has to stand, so build-board-v4.py
@@ -72,9 +75,9 @@ const KIT = {
     // shifted left of its artboard position to clear the heads; main.js
     // fades it out once the first card is turned.
     startLabel: {
-      img: "assets/v4/label-start.png?v=1",
-      x: 0.3277,
-      y: 0.0781,
+      img: "assets/v4/label-start.png?v=2",
+      x: 0.2860,
+      y: 0.0433,
       w: 0.3186,
     },
 
@@ -82,24 +85,24 @@ const KIT = {
     // click to open the gifts (Waheed, Aug 19)
     surprise: {
       // click target, generous enough for a thumb on a phone
-      hit: { x: 0.706, y: 0.912, w: 0.246, h: 0.082 },
+      hit: { x: 0.706, y: 0.9087, w: 0.246, h: 0.0851 },
       // the pulse is a ring drawn just OUTSIDE the baked pill: the pill is
       // painted into the board, so anything laid over it washes the red out
-      ring: { x: 0.7115, y: 0.9385, w: 0.2290, h: 0.0290 },
+      ring: { x: 0.7115, y: 0.9363, w: 0.2290, h: 0.0301 },
     },
 
     // pawn track — traced along the painted band's centerline, start → finish
     // (verify against the art with tools/ + trackviz when the board changes)
     track: [
-      [0.945, 0.0732], [0.845, 0.0922], [0.762, 0.1234], [0.660, 0.1547],
-      [0.550, 0.1737], [0.440, 0.1945], [0.350, 0.2182], [0.295, 0.2466],
-      [0.253, 0.2798], [0.222, 0.3158],
-      [0.205, 0.3670], [0.293, 0.3973], [0.383, 0.4286], [0.473, 0.4494],
-      [0.560, 0.4617], [0.660, 0.4788], [0.755, 0.5072], [0.833, 0.5546],
-      [0.805, 0.6067], [0.720, 0.6276], [0.600, 0.6418], [0.483, 0.6570],
-      [0.370, 0.6645], [0.260, 0.6702], [0.148, 0.6863], [0.107, 0.7299],
-      [0.126, 0.7745], [0.215, 0.8199], [0.335, 0.8398], [0.445, 0.8541],
-      [0.550, 0.8607], [0.650, 0.8654], [0.735, 0.8882], [0.775, 0.9384],
+      [0.945, 0.0382], [0.845, 0.0579], [0.762, 0.0904], [0.66, 0.1228],
+      [0.55, 0.1425], [0.44, 0.1641], [0.35, 0.1887], [0.295, 0.2182],
+      [0.253, 0.2526], [0.222, 0.29], [0.205, 0.3431], [0.293, 0.3746],
+      [0.383, 0.407], [0.473, 0.4286], [0.56, 0.4414], [0.66, 0.4591],
+      [0.755, 0.4886], [0.833, 0.5378], [0.805, 0.5919], [0.72, 0.6135],
+      [0.6, 0.6283], [0.483, 0.644], [0.37, 0.6519], [0.26, 0.6578],
+      [0.148, 0.6745], [0.107, 0.7197], [0.126, 0.766], [0.215, 0.8132],
+      [0.335, 0.8338], [0.445, 0.8486], [0.55, 0.8554], [0.65, 0.8604],
+      [0.735, 0.884], [0.775, 0.9361],
     ],
   },
 
@@ -116,7 +119,7 @@ const KIT = {
   pawnSpread: 0.41,
 
   // the card art that replaces a year card when that milestone is next up
-  clickCard: "assets/v4/card-clickme.png?v=1",
+  clickCard: "assets/v4/card-clickme.png?v=2",
   // blank card that sits under the turning one, so the milestone card baked
   // into the board is never uncovered mid-turn
   blankCard: "assets/v4/card-blank.png?v=1",
@@ -132,59 +135,67 @@ const KIT = {
       face: "assets/v3/face-founding.png?v=2",
       yearCard: "assets/v3/year-2018.png?v=2",
       alt: "Memory card: The Team Founding, 2018 — two glasses raised in a toast",
-      slot: { cx: 0.2338, cy: 0.2954, w: 0.1977, h: 0.1453, angle: -3.81 },
-      pawnPos: [0.435, 0.1945], // stops clear of the card text
+      slot: { cx: 0.2338, cy: 0.2688, w: 0.1977, h: 0.1508, angle: -3.81 },
+      pawnPos: [0.435, 0.1641], // stops clear of the card text
     },
     {
       id: "contract",
       face: "assets/v3/face-contract.png?v=2",
       yearCard: "assets/v3/year-2021.png?v=2",
       alt: "Memory card: Contract Talks Begin, 2021 — an engagement ring",
-      slot: { cx: 0.6698, cy: 0.4301, w: 0.1956, h: 0.1453, angle: -3.49 },
-      pawnPos: [0.414, 0.4371], // stops clear of the card text
+      slot: { cx: 0.6698, cy: 0.4086, w: 0.1956, h: 0.1508, angle: -3.49 },
+      pawnPos: [0.414, 0.4159], // stops clear of the card text
     },
     {
       id: "signing",
       face: "assets/v3/face-signing.png?v=2",
       yearCard: "assets/v3/year-2022.png?v=2",
       alt: "Memory card: Signing Day, 2022 — a wedding cake topped with a heart",
-      slot: { cx: 0.3092, cy: 0.6409, w: 0.1977, h: 0.1453, angle: -3.07 },
-      pawnPos: [0.536, 0.6503], // stops clear of the card text
+      slot: { cx: 0.3092, cy: 0.6274, w: 0.1977, h: 0.1508, angle: -3.07 },
+      pawnPos: [0.536, 0.6371], // stops clear of the card text
     },
     {
       id: "henry",
       face: "assets/v3/face-henry.png?v=2",
       yearCard: "assets/v3/year-2026.png?v=2",
       alt: "Memory card: Henry, Franchise Cornerstone, 2026 — a baby bottle",
-      slot: { cx: 0.6298, cy: 0.8489, w: 0.1977, h: 0.1453, angle: 3.54 },
-      pawnPos: [0.365, 0.8446], // stops clear of the card text
+      slot: { cx: 0.6298, cy: 0.8432, w: 0.1977, h: 0.1508, angle: 3.54 },
+      pawnPos: [0.365, 0.8387], // stops clear of the card text
     },
   ],
 
   // gift options — Kharisel's Aug 19 card designs (chrome + buttons baked
-  // into the art; the whole card is the click target)
+  // into the art; the whole card is the click target). The descriptions were
+  // baked in too, so they are erased from the art (assets/v5) and set as live
+  // text here instead — that's what lets the copy change without a re-export.
   gifts: [
     {
       name: "The Rookie Kit",
       back: "assets/v3/gift-rookie-back.png?v=2",
-      front: "assets/v3/gift-rookie-front.png?v=4",
+      front: "assets/v5/gift-rookie-front.png?v=1",
       backAlt: "Face-down gift card with a basketball sticker — flip to reveal",
+      // Sarah, Aug 20: drop "Indiana" and hyphenate, because the baked line
+      // break made "Pacers-themed" read as two separate things. The nbsp-
+      // hyphen keeps it on one line at any card size.
+      desc: "A collection of Pacers\u2011themed<br>baby essentials to welcome<br>the newest little fan.",
       frontAlt:
-        "The Rookie Kit — a collection of Indiana Pacers–themed baby essentials to welcome the newest little fan. Click to choose this gift.",
+        "The Rookie Kit — a collection of Pacers-themed baby essentials to welcome the newest little fan. Click to choose this gift.",
     },
     {
       name: "The Highlight Reel",
       back: "assets/v3/gift-highlight-back.png?v=2",
-      front: "assets/v3/gift-highlight-front.png?v=4",
+      front: "assets/v5/gift-highlight-front.png?v=1",
       backAlt: "Face-down gift card with a photo-album sticker — flip to reveal",
+      desc: "Items to help preserve<br>the little moments as<br>they unfold.",
       frontAlt:
         "The Highlight Reel — items to help preserve the little moments as they unfold. Click to choose this gift.",
     },
     {
       name: "The Sixth Man",
       back: "assets/v3/gift-sixthman-back.png?v=2",
-      front: "assets/v3/gift-sixthman-front.png?v=4",
+      front: "assets/v5/gift-sixthman-front.png?v=1",
       backAlt: "Face-down gift card with a serving-dish sticker — flip to reveal",
+      desc: "Chef-made meals, delivered<br>to the door. Pick the meals,<br>choose a date, and you\u2019re set.",
       frontAlt:
         "The Sixth Man — chef-made CookUnity meals delivered to the door. Click to choose this gift.",
     },

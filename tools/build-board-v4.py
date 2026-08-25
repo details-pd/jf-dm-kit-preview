@@ -29,9 +29,18 @@ from PIL import Image
 SRC = sys.argv[1] if len(sys.argv) > 1 else "board.png"
 OUT = sys.argv[2] if len(sys.argv) > 2 else "assets/v4"
 
-PAD_PX = 360        # cream inserted below the frame, in render px
+# Cream inserted below the frame, in render px. Kept to the minimum that
+# clears the taller head: Kelly is 724px and anchors at -75%, so standing at
+# the start (artboard y 0.085 -> 554px) her hair reaches PAD - 543 + 554,
+# which must clear the 61px frame with room to spare. Sarah asked for the
+# top gap to be closed (Aug 20) — 360 left far too much sky.
+PAD_PX = 110
 FRAME_PX = 61       # board's own black border
 CREAM = (253, 248, 221)
+# The full render is 3876x6876 = 27 megapixels, and the browser re-rasterises
+# it on every camera zoom — a real cause of the "laggy after clicks" Sarah
+# reported. Play zoom needs ~2100 device px of width at 2x, so 2400 is ample.
+OUT_W = 2400
 
 os.makedirs(OUT, exist_ok=True)
 board = Image.open(SRC).convert("RGB")
@@ -146,7 +155,10 @@ tall.paste(board.crop((0, FRAME_PX, BW, BH)), (0, FRAME_PX + PAD_PX))
 side = Image.new("RGB", (FRAME_PX, PAD_PX), (0, 0, 0))
 tall.paste(side, (0, FRAME_PX))                                    # left frame column
 tall.paste(side, (BW - FRAME_PX, FRAME_PX))                        # right frame column
-tall.save(os.path.join(OUT, "board-play.jpg"), quality=92)
+if OUT_W and OUT_W < BW:
+    tall = tall.resize((OUT_W, round(NH * OUT_W / BW)), Image.LANCZOS)
+tall.save(os.path.join(OUT, "board-play.jpg"), quality=90)
+print("board written at", tall.size)
 
 # ---------- 3. report the coordinate transform ----------
 # every y fraction measured on the raw artboard maps as (y*BH + PAD) / NH
@@ -186,6 +198,7 @@ print("slots cy:", {k: ynew(v) for k, v in
                     (("founding", 0.2565), ("contract", 0.3986),
                      ("signing", 0.6211), ("henry", 0.8406))})
 print("slot h:", round(0.1533 * BH / NH, 4))
-print("start (red piece):", [0.777, ynew(0.069)])
+print("design size:", [1938, round(1938 * NH / BW)])
+print("start (red piece, lower so less pad is needed):", [0.740, ynew(0.085)])
 print("final stop (black):", [0.762, ynew(0.913)])
 print("surprise piece (blue):", [0.775, ynew(0.938)])

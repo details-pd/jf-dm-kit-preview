@@ -53,6 +53,7 @@ function buildBoard() {
     // duplicate card — so a blank card sits underneath and stays put,
     // exactly like turning the top card of a pile.
     slot.innerHTML =
+      `<div class="slot-halo"></div>` +
       `<img class="slot-plate" src="${KIT.blankCard}" alt="">` +
       `<div class="slot-turn">` +
         `<img class="slot-year" src="${m.yearCard}" alt="">` +
@@ -223,9 +224,29 @@ function slotBox(slot) {
 }
 
 function frameActorAnd(box) {
-  const a = pawnBox(currentPawnPoint());
-  return frameBox(Math.min(a[0], box[0]), Math.min(a[1], box[1]),
-                  Math.max(a[2], box[2]), Math.max(a[3], box[3]));
+  return frameBox(...unionBox([pawnBox(currentPawnPoint()), box]));
+}
+
+function ringBox() {
+  const R = KIT.board.surprise.ring;
+  return [R.x * BW, R.y * BH, (R.x + R.w) * BW, (R.y + R.h) * BH];
+}
+
+/* Everything that has to stay in shot from the moment milestone i is offered
+   until the couple finishes walking to it: the card, and where they'll end up.
+   Framing all of it UP FRONT means the walk itself needs no zoom change — the
+   camera used to still be zooming while they set off, which clipped the card
+   for the first few frames on a phone. */
+function milestoneViewBoxes(i) {
+  const boxes = [slotBox(KIT.milestones[i].slot)]
+    .concat(routePawnBoxes(currentPawnPoint(), milestoneAnchor(i)));
+  // the last one runs straight on into the walk to the surprise
+  if (i === KIT.milestones.length - 1) {
+    boxes.push(ringBox());
+    boxes.push(...routePawnBoxes(milestoneAnchor(i), {
+      x: KIT.board.endPos[0] * BW, y: KIT.board.endPos[1] * BH }));
+  }
+  return boxes;
 }
 
 function cameraTo(target, dur, ease, onDone) {
@@ -252,7 +273,9 @@ function renderPawnsAt(p) {
   const offs = [-s, s];
   pawnEls().forEach((e, i) => {
     const w = KIT.pawns[i].widthFrac * BW;
-    gsap.set(e, { left: p.x + offs[i] * w + "px", top: p.y + "px" });
+    // transform, not left/top: those are layout properties and re-laid the
+    // board out on every frame of every walk (Sarah: "laggy after clicks")
+    gsap.set(e, { x: p.x + offs[i] * w, y: p.y });
   });
 }
 function positionPawns() { renderPawnsAt(currentPawnPoint()); }
@@ -263,30 +286,29 @@ function positionPawns() { renderPawnsAt(currentPawnPoint()); }
    the couple alone (what this used to do) slid the card off the edge
    mid-walk (Waheed, Aug 20). */
 function softFollow(p, keepBox) {
-  const a = pawnBox(p);
-  const box = keepBox
-    ? [Math.min(a[0], keepBox[0]), Math.min(a[1], keepBox[1]),
-       Math.max(a[2], keepBox[2]), Math.max(a[3], keepBox[3])]
-    : a;
-  const c = frameBox(box[0], box[1], box[2], box[3]);
+  const box = unionBox([pawnBox(p)].concat(keepBox ? [keepBox] : []));
+  // pan only — the zoom for a walk is set once, up front (see walkPawnsTo).
+  // Changing scale every frame made the browser re-rasterise the board
+  // bitmap continuously, which is what made walks feel sticky.
+  const c = camTargetFor((box[0] + box[2]) / 2, (box[1] + box[3]) / 2, cam.s);
   cam.x += (c.x - cam.x) * 0.12;
   cam.y += (c.y - cam.y) * 0.12;
-  cam.s += (c.s - cam.s) * 0.12;
   applyCam();
+}
+
+function unionBox(boxes) {
+  return [Math.min(...boxes.map((b) => b[0])), Math.min(...boxes.map((b) => b[1])),
+          Math.max(...boxes.map((b) => b[2])), Math.max(...boxes.map((b) => b[3]))];
 }
 
 // Walk to an arbitrary board point at CONSTANT SPEED. The whole journey —
 // step onto the track, travel along it, step off to the anchor — is one
 // arc-length-parameterized path with a single ease, so the pace never
 // jumps between segments.
-function walkPawnsTo(targetPt, keepBox, onDone) {
-  const follow = !!keepBox;
-  const bob = gsap.to(pawnEls(), { rotation: 3.5, duration: 0.2, repeat: -1, yoyo: true });
-  const from = currentPawnPoint();
+// the route of a walk: on-ramp + track run + off-ramp
+function walkPolyline(from, targetPt) {
   const t0 = TRACK.nearestT(from.x, from.y);
   const t1 = TRACK.nearestT(targetPt.x, targetPt.y);
-
-  // build the full polyline: on-ramp + track run + off-ramp
   const pts = [from];
   const onRamp = TRACK.pointAt(t0);
   if (Math.hypot(onRamp.x - from.x, onRamp.y - from.y) > 8) pts.push(onRamp);
@@ -296,6 +318,26 @@ function walkPawnsTo(targetPt, keepBox, onDone) {
   }
   if (Math.hypot(targetPt.x - pts[pts.length - 1].x,
                  targetPt.y - pts[pts.length - 1].y) > 8) pts.push(targetPt);
+  return pts;
+}
+
+/* The couple's footprint sampled ALONG a route. Framing from the two
+   endpoints isn't enough: the track loops, so a walk between two nearby
+   anchors can swing right across the board, and a zoom that only fitted the
+   ends left the card clipped in the middle of the trip. */
+function routePawnBoxes(from, targetPt) {
+  const pts = walkPolyline(from, targetPt);
+  const boxes = [];
+  for (let i = 0; i < pts.length; i += 8) boxes.push(pawnBox(pts[i]));
+  boxes.push(pawnBox(pts[pts.length - 1]));
+  return boxes;
+}
+
+function walkPawnsTo(targetPt, keepBox, onDone) {
+  const follow = !!keepBox;
+  const bob = gsap.to(pawnEls(), { rotation: 3.5, duration: 0.2, repeat: -1, yoyo: true });
+  const from = currentPawnPoint();
+  const pts = walkPolyline(from, targetPt);
 
   // cumulative arc length, so progress 0..1 maps to distance travelled
   const cum = [0];
@@ -311,6 +353,19 @@ function walkPawnsTo(targetPt, keepBox, onDone) {
     return { x: pts[lo - 1].x + (pts[lo].x - pts[lo - 1].x) * f,
              y: pts[lo - 1].y + (pts[lo].y - pts[lo - 1].y) * f };
   };
+
+  // One zoom for the whole trip: wide enough to hold the couple at both ends
+  // plus whatever has to stay in shot. Set once here so the walk itself is
+  // pure panning.
+  // The invite already framed this walk, so normally there's nothing to do.
+  // Only ever widen — never zoom IN mid-walk, which is what let the card slip
+  // off the edge while the camera was still moving.
+  if (keepBox) {
+    const walk = frameBox(...unionBox(routePawnBoxes(from, targetPt).concat([keepBox])));
+    if (walk.s < cam.s - 0.0005) {
+      gsap.to(cam, { s: walk.s, duration: 0.3, ease: "power1.inOut", onUpdate: applyCam });
+    }
+  }
 
   const state = { d: 0 };
   gsap.to(state, {
@@ -390,7 +445,7 @@ function startExperience() {
 
   // land on a view that holds both the couple and the first card, so the
   // thing they're asked to click is on screen from the very first frame
-  const play = frameActorAnd(slotBox(KIT.milestones[0].slot));
+  const play = frameBox(...unionBox(milestoneViewBoxes(0)));
 
   gsap.timeline({
     // the first card starts inviting once we've landed on the start
@@ -431,9 +486,16 @@ function inviteMilestone(i) {
   slot.tabIndex = 0;
   slot.setAttribute("role", "button");
   slot.setAttribute("aria-label", KIT.copy.clickCardAlt);
-  // bring the card into view alongside the couple, then invite the click
-  cameraTo(frameActorAnd(slotBox(m.slot)), 0.7, "power2.inOut",
-    () => shake(slot, m.slot.angle));
+  // bring the card into view alongside the couple, then invite the click.
+  // The shake alone wasn't reading as "your turn" (Sarah, Aug 20) — the card
+  // now also keeps a halo pulsing until it's clicked.
+  cameraTo(frameBox(...unionBox(milestoneViewBoxes(i))), 0.7, "power2.inOut", () => {
+    shake(slot, m.slot.angle);
+    const halo = slot.querySelector(".slot-halo");
+    gsap.killTweensOf(halo);
+    gsap.fromTo(halo, { opacity: 0.2 },
+      { opacity: 1, duration: 0.7, repeat: -1, yoyo: true, ease: "sine.inOut" });
+  });
 }
 
 function shake(elm, angle) {
@@ -469,6 +531,11 @@ function onSlotClick(i) {
   slot.removeAttribute("role");
   slot.removeAttribute("aria-label");
   slot.tabIndex = -1;
+  const halo = slot.querySelector(".slot-halo");
+  gsap.killTweensOf(halo);
+  gsap.to(halo, { opacity: 0, duration: 0.25 });
+  gsap.killTweensOf(slot); // stop any shake still running so it can't fight the turn
+  gsap.set(slot, { rotation: angle });
   gsap.killTweensOf(slot);              // a shake may still be running
   gsap.set(slot, { rotation: angle });
 
@@ -513,8 +580,7 @@ function finishJourney() {
     x: KIT.board.endPos[0] * BW,
     y: KIT.board.endPos[1] * BH,
   };
-  const R = KIT.board.surprise.ring;
-  walkPawnsTo(end, [R.x * BW, R.y * BH, (R.x + R.w) * BW, (R.y + R.h) * BH], () => {
+  walkPawnsTo(end, ringBox(), () => {
     busy = false;
     armSurprise();
   });
@@ -522,9 +588,7 @@ function finishJourney() {
 
 function armSurprise() {
   // hold the couple and the pill in one frame
-  const R = KIT.board.surprise.ring;
-  cameraTo(frameActorAnd([R.x * BW, R.y * BH,
-                          (R.x + R.w) * BW, (R.y + R.h) * BH]), 0.6, "power2.inOut");
+  cameraTo(frameActorAnd(ringBox()), 0.6, "power2.inOut");
   surpriseHit.classList.add("on");
   gsap.killTweensOf(surpriseGlow);
   gsap.fromTo(surpriseGlow,
@@ -599,14 +663,27 @@ function buildGifts() {
     card.innerHTML =
       `<div class="gift-flip-inner">
         <img class="gf-face gf-face-down" src="${g.back}" alt="">
-        <img class="gf-face gf-face-up" src="${g.front}" alt="${g.frontAlt}">
+        <div class="gf-face gf-face-up">
+          <img src="${g.front}" alt="${g.frontAlt}">
+          <p class="gf-desc">${g.desc || ""}</p>
+        </div>
       </div>`;
     row.appendChild(card);
   });
 }
 
+// the descriptions are live text over the artwork, so they have to be sized
+// against the card's rendered width (the row is display:none until now)
+function sizeGiftDesc() {
+  document.querySelectorAll(".gift-flip").forEach((c) => {
+    const d = c.querySelector(".gf-desc");
+    if (d && c.clientWidth) d.style.fontSize = c.clientWidth * 0.053 + "px";
+  });
+}
+
 function showGiftSelect() {
   giftSelect.style.display = "grid";
+  sizeGiftDesc();
   gsap.from(".gift-flip", {
     y: 60, opacity: 0, stagger: 0.1, duration: 0.45, ease: "back.out(1.4)",
     onComplete: () => { busy = false; },
@@ -624,6 +701,7 @@ function changeGift() {
   formOverlay.style.display = "none";
   resetGiftSelection();
   giftSelect.style.display = "grid";
+  sizeGiftDesc();
   gsap.from(".gift-flip", { y: 40, opacity: 0, stagger: 0.08, duration: 0.4, ease: "back.out(1.3)" });
 }
 
@@ -770,6 +848,7 @@ stage.addEventListener("wheel", (e) => {
 
 /* ================= resize: keep current framing sane ================= */
 window.addEventListener("resize", () => {
+  sizeGiftDesc();
   if (stage.style.visibility !== "visible") return;
   positionPawns();
   if (!started) { // still on the landing letter: keep the overview fit
