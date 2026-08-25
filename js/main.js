@@ -490,12 +490,30 @@ function inviteMilestone(i) {
   // The shake alone wasn't reading as "your turn" (Sarah, Aug 20) — the card
   // now also keeps a halo pulsing until it's clicked.
   cameraTo(frameBox(...unionBox(milestoneViewBoxes(i))), 0.7, "power2.inOut", () => {
+    // The card is clickable from the moment it's offered, so an eager click
+    // can land while this pan is still running. Without this guard the pulse
+    // started on the card that had just been turned and never stopped —
+    // leaving two cards glowing at once (Waheed, Aug 20).
+    if (activeIndex !== i) return;
     shake(slot, m.slot.angle);
-    const halo = slot.querySelector(".slot-halo");
-    gsap.killTweensOf(halo);
-    gsap.fromTo(halo, { opacity: 0.2 },
-      { opacity: 1, duration: 0.7, repeat: -1, yoyo: true, ease: "sine.inOut" });
+    pulseHalo(slot);
   });
+}
+
+// exactly one card may pulse at a time
+function pulseHalo(slot) {
+  document.querySelectorAll(".slot-halo").forEach((h) => {
+    gsap.killTweensOf(h);
+    if (h !== slot.querySelector(".slot-halo")) gsap.set(h, { opacity: 0 });
+  });
+  gsap.fromTo(slot.querySelector(".slot-halo"), { opacity: 0.2 },
+    { opacity: 1, duration: 0.7, repeat: -1, yoyo: true, ease: "sine.inOut" });
+}
+
+function clearHalo(slot) {
+  const h = slot.querySelector(".slot-halo");
+  gsap.killTweensOf(h);
+  gsap.to(h, { opacity: 0, duration: 0.25 });
 }
 
 function shake(elm, angle) {
@@ -531,9 +549,7 @@ function onSlotClick(i) {
   slot.removeAttribute("role");
   slot.removeAttribute("aria-label");
   slot.tabIndex = -1;
-  const halo = slot.querySelector(".slot-halo");
-  gsap.killTweensOf(halo);
-  gsap.to(halo, { opacity: 0, duration: 0.25 });
+  clearHalo(slot);
   gsap.killTweensOf(slot); // stop any shake still running so it can't fight the turn
   gsap.set(slot, { rotation: angle });
   gsap.killTweensOf(slot);              // a shake may still be running
