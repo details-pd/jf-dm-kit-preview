@@ -223,8 +223,34 @@ function slotBox(slot) {
           slot.cx * BW + w / 2, slot.cy * BH + h / 2];
 }
 
+/* Once play starts the zoom is PINNED and every camera move is a pan.
+   Before that (the establishing shot and the opening framing) the camera is
+   still free to pick a scale that fits.
+
+   It used to re-fit at four points per milestone — widen for the route, pan,
+   tighten on arrival, widen again for the next card — which on a phone meant
+   the view was constantly breathing in and out (Waheed, Aug 20: "the zooming
+   in and out is quite clunky"). Every resting framing fits at play zoom, so
+   holding it steady costs nothing and reads far calmer. */
+let scaleLocked = false;
+
+function frameFor(boxes) {
+  const b = unionBox(boxes);
+  const cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
+  return scaleLocked ? camTargetFor(cx, cy, playScale()) : frameBox(...b);
+}
+
+function lockPlayScale(dur) {
+  if (scaleLocked) return;
+  scaleLocked = true;
+  // Tween position AND scale together, landing centred on the couple: nudging
+  // cam.s on its own scales about the board's origin, which slid the couple
+  // out of shot at the start of their first walk.
+  cameraTo(frameFor([pawnBox(currentPawnPoint())]), dur, "power2.inOut");
+}
+
 function frameActorAnd(box) {
-  return frameBox(...unionBox([pawnBox(currentPawnPoint()), box]));
+  return frameFor([pawnBox(currentPawnPoint()), box]);
 }
 
 function ringBox() {
@@ -286,7 +312,8 @@ function positionPawns() { renderPawnsAt(currentPawnPoint()); }
    the couple alone (what this used to do) slid the card off the edge
    mid-walk (Waheed, Aug 20). */
 function softFollow(p, keepBox) {
-  const box = unionBox([pawnBox(p)].concat(keepBox ? [keepBox] : []));
+  const box = scaleLocked ? pawnBox(p)
+    : unionBox([pawnBox(p)].concat(keepBox ? [keepBox] : []));
   // pan only — the zoom for a walk is set once, up front (see walkPawnsTo).
   // Changing scale every frame made the browser re-rasterise the board
   // bitmap continuously, which is what made walks feel sticky.
@@ -354,18 +381,10 @@ function walkPawnsTo(targetPt, keepBox, onDone) {
              y: pts[lo - 1].y + (pts[lo].y - pts[lo - 1].y) * f };
   };
 
-  // One zoom for the whole trip: wide enough to hold the couple at both ends
-  // plus whatever has to stay in shot. Set once here so the walk itself is
-  // pure panning.
-  // The invite already framed this walk, so normally there's nothing to do.
-  // Only ever widen — never zoom IN mid-walk, which is what let the card slip
-  // off the edge while the camera was still moving.
-  if (keepBox) {
-    const walk = frameBox(...unionBox(routePawnBoxes(from, targetPt).concat([keepBox])));
-    if (walk.s < cam.s - 0.0005) {
-      gsap.to(cam, { s: walk.s, duration: 0.3, ease: "power1.inOut", onUpdate: applyCam });
-    }
-  }
+  // No zoom here at all: the scale is pinned for the whole of play, so a walk
+  // is pure panning. The couple is the subject while they move — a card they
+  // are travelling away from is allowed to leave the frame, and the arrival
+  // pan below brings the destination card fully back into shot.
 
   const state = { d: 0 };
   gsap.to(state, {
@@ -384,11 +403,8 @@ function walkPawnsTo(targetPt, keepBox, onDone) {
       bob.kill();
       gsap.to(pawnEls(), { rotation: 0, duration: 0.15 });
       if (follow) {
-        // settle on the same couple-plus-target framing, not just the couple
-        const a = pawnBox(targetPt);
-        cameraTo(frameBox(Math.min(a[0], keepBox[0]), Math.min(a[1], keepBox[1]),
-                          Math.max(a[2], keepBox[2]), Math.max(a[3], keepBox[3])),
-                 0.4, "power1.out", onDone);
+        // settle so the card they walked to is fully in shot again
+        cameraTo(frameFor([pawnBox(targetPt), keepBox]), 0.45, "power1.out", onDone);
       } else if (onDone) onDone();
     },
   });
@@ -445,7 +461,7 @@ function startExperience() {
 
   // land on a view that holds both the couple and the first card, so the
   // thing they're asked to click is on screen from the very first frame
-  const play = frameBox(...unionBox(milestoneViewBoxes(0)));
+  const play = frameFor([pawnBox(startPoint()), slotBox(KIT.milestones[0].slot)]);
 
   gsap.timeline({
     // the first card starts inviting once we've landed on the start
@@ -489,7 +505,7 @@ function inviteMilestone(i) {
   // bring the card into view alongside the couple, then invite the click.
   // The shake alone wasn't reading as "your turn" (Sarah, Aug 20) — the card
   // now also keeps a halo pulsing until it's clicked.
-  cameraTo(frameBox(...unionBox(milestoneViewBoxes(i))), 0.7, "power2.inOut", () => {
+  cameraTo(frameFor([pawnBox(currentPawnPoint()), slotBox(m.slot)]), 0.6, "power2.inOut", () => {
     // The card is clickable from the moment it's offered, so an eager click
     // can land while this pan is still running. Without this guard the pulse
     // started on the card that had just been turned and never stopped —
@@ -556,7 +572,10 @@ function onSlotClick(i) {
   gsap.set(slot, { rotation: angle });
 
   // the start label has done its job the moment they set off
-  if (i === 0) gsap.to(startLabel, { opacity: 0, duration: 0.4 });
+  if (i === 0) {
+    gsap.to(startLabel, { opacity: 0, duration: 0.4 });
+    lockPlayScale(0.4); // one settle into play zoom, done before they set off
+  }
 
   gsap.timeline({
     onComplete: () => {
