@@ -220,6 +220,10 @@ const KIT = {
     // while the couple walks to it (Waheed, Aug 20).
     framePad: 0.92,
     framePadMobile: 0.84,
+    // the couple can roam this far into the frame before the camera follows;
+    // inside it the camera holds completely still (Kharisel, Aug 20)
+    followMargin: 0.05,
+    followEase: 0.24,
   },
 
   // animation pacing (Sarah asked for snappier transitions, Aug 13)

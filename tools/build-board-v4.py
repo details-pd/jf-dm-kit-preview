@@ -147,10 +147,29 @@ for (x, y) in grown:
     if not is_cream(px[x, y]):
         px[x, y] = CREAM
 
-# ---------- 2. insert the cream headroom band under the frame ----------
+# ---------- 2. insert the headroom band under the frame ----------
+# The opening tile BLEEDS off the top edge in the artboard, the way the last
+# tile bleeds off the bottom. Filling the new band with flat cream broke that
+# and left a gap between the board and its border (Kharisel, Aug 20), so the
+# band is filled by extruding the first row of artwork upward, following the
+# track's lean, which carries the tile back up to the frame.
+def band_edges(y):
+    xs = [x for x in range(BW // 2, BW - FRAME_PX) if not is_cream(px[x, y])]
+    return (min(xs), max(xs)) if xs else None
+
+
+e_top, e_low = band_edges(FRAME_PX + 1), band_edges(FRAME_PX + 109)
+slope = 0.0
+if e_top and e_low:  # px the tile drifts sideways per row, going up
+    slope = ((e_top[0] - e_low[0]) + (e_top[1] - e_low[1])) / 2 / 108
+
 NH = BH + PAD_PX
 tall = Image.new("RGB", (BW, NH), CREAM)
 tall.paste(board.crop((0, 0, BW, FRAME_PX)), (0, 0))              # frame stays on top
+first_row = board.crop((0, FRAME_PX, BW, FRAME_PX + 1))
+for k in range(PAD_PX):
+    dy = PAD_PX - k                       # rows above the artwork's own top
+    tall.paste(first_row, (round(slope * dy), FRAME_PX + k))
 tall.paste(board.crop((0, FRAME_PX, BW, BH)), (0, FRAME_PX + PAD_PX))
 side = Image.new("RGB", (FRAME_PX, PAD_PX), (0, 0, 0))
 tall.paste(side, (0, FRAME_PX))                                    # left frame column

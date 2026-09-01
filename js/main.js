@@ -253,6 +253,19 @@ function frameActorAnd(box) {
   return frameFor([pawnBox(currentPawnPoint()), box]);
 }
 
+/* Is all of this already comfortably on screen where the camera is now?
+   If so the camera should stay put. Kharisel, Aug 20: "staying in the current
+   view before the pawn moves rather than recalibrating back to it — the extra
+   up-and-down movement makes the experience feel a bit laggy, and the pawn is
+   already visible from the current view with the two cards." */
+function alreadyInView(boxes, margin = 10) {
+  const b = unionBox(boxes);
+  return b[0] * cam.s + cam.x >= margin
+      && b[1] * cam.s + cam.y >= margin
+      && b[2] * cam.s + cam.x <= vw() - margin
+      && b[3] * cam.s + cam.y <= vh() - margin;
+}
+
 function ringBox() {
   const R = KIT.board.surprise.ring;
   return [R.x * BW, R.y * BH, (R.x + R.w) * BW, (R.y + R.h) * BH];
@@ -311,15 +324,34 @@ function positionPawns() { renderPawnsAt(currentPawnPoint()); }
    two are often further apart than a play-zoom screenful, and centring on
    the couple alone (what this used to do) slid the card off the edge
    mid-walk (Waheed, Aug 20). */
+/* Dead-zone follow: while the couple is inside the middle of the frame the
+   camera does not move at all, and it only nudges once they approach an edge.
+   Re-centring them every frame is what made a walk look like the whole board
+   was sliding around under them. */
 function softFollow(p, keepBox) {
   const box = scaleLocked ? pawnBox(p)
     : unionBox([pawnBox(p)].concat(keepBox ? [keepBox] : []));
-  // pan only — the zoom for a walk is set once, up front (see walkPawnsTo).
-  // Changing scale every frame made the browser re-rasterise the board
-  // bitmap continuously, which is what made walks feel sticky.
-  const c = camTargetFor((box[0] + box[2]) / 2, (box[1] + box[3]) / 2, cam.s);
-  cam.x += (c.x - cam.x) * 0.12;
-  cam.y += (c.y - cam.y) * 0.12;
+  const x0 = box[0] * cam.s + cam.x, x1 = box[2] * cam.s + cam.x;
+  const y0 = box[1] * cam.s + cam.y, y1 = box[3] * cam.s + cam.y;
+  const mx = vw() * KIT.camera.followMargin, my = vh() * KIT.camera.followMargin;
+  let dx = 0, dy = 0;
+  if (x1 - x0 < vw() - 2 * mx) {
+    if (x0 < mx) dx = mx - x0; else if (x1 > vw() - mx) dx = vw() - mx - x1;
+  } else {                       // wider than the dead zone: keep it centred
+    dx = (vw() - (x0 + x1)) / 2;
+  }
+  if (y1 - y0 < vh() - 2 * my) {
+    if (y0 < my) dy = my - y0; else if (y1 > vh() - my) dy = vh() - my - y1;
+  } else {
+    dy = (vh() - (y0 + y1)) / 2;
+  }
+  if (!dx && !dy) return;        // already comfortably framed — hold still
+  // catch up briskly once it does have to move: a slow lerp let the couple
+  // outrun the camera and clip the edge for a few frames on a phone
+  const c = clampCam(cam.x + dx, cam.y + dy, cam.s);
+  const k = KIT.camera.followEase;
+  cam.x += (c.x - cam.x) * k;
+  cam.y += (c.y - cam.y) * k;
   applyCam();
 }
 
@@ -403,8 +435,13 @@ function walkPawnsTo(targetPt, keepBox, onDone) {
       bob.kill();
       gsap.to(pawnEls(), { rotation: 0, duration: 0.15 });
       if (follow) {
-        // settle so the card they walked to is fully in shot again
-        cameraTo(frameFor([pawnBox(targetPt), keepBox]), 0.45, "power1.out", onDone);
+        // settle so the card they walked to is fully in shot — unless it
+        // already is, in which case moving would just be extra motion
+        if (alreadyInView([pawnBox(targetPt), keepBox])) {
+          if (onDone) onDone();
+        } else {
+          cameraTo(frameFor([pawnBox(targetPt), keepBox]), 0.45, "power1.out", onDone);
+        }
       } else if (onDone) onDone();
     },
   });
@@ -505,7 +542,7 @@ function inviteMilestone(i) {
   // bring the card into view alongside the couple, then invite the click.
   // The shake alone wasn't reading as "your turn" (Sarah, Aug 20) — the card
   // now also keeps a halo pulsing until it's clicked.
-  cameraTo(frameFor([pawnBox(currentPawnPoint()), slotBox(m.slot)]), 0.6, "power2.inOut", () => {
+  const offer = () => {
     // The card is clickable from the moment it's offered, so an eager click
     // can land while this pan is still running. Without this guard the pulse
     // started on the card that had just been turned and never stopped —
@@ -513,7 +550,10 @@ function inviteMilestone(i) {
     if (activeIndex !== i) return;
     shake(slot, m.slot.angle);
     pulseHalo(slot);
-  });
+  };
+  const boxes = [pawnBox(currentPawnPoint()), slotBox(m.slot)];
+  if (alreadyInView(boxes)) offer();
+  else cameraTo(frameFor(boxes), 0.6, "power2.inOut", offer);
 }
 
 // exactly one card may pulse at a time
